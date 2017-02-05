@@ -4,6 +4,6 @@ Rails.application.routes.draw do
     put :finish, on: :member, via: :put
   end
 
-  root to: 'ui#index'
+  mount_ember_app :ui, to: '/'
 
 end
