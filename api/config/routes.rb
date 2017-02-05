@@ -1,3 +1,9 @@
 Rails.application.routes.draw do
-  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+
+  resources :tasks, only: [:create] do
+    put :finish, on: :member, via: :put
+  end
+
+  root to: 'ui#index'
+
 end

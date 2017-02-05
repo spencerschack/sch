@@ -4,7 +4,7 @@ class CreateTasks < ActiveRecord::Migration[5.0]
       t.string :name, null: false, index: true
       t.text :description
       t.datetime :start, null: false, index: true
-      t.datetime :finish, null: false, index: true
+      t.datetime :finish, index: true
 
       t.timestamps
     end

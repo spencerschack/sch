@@ -19,7 +19,7 @@ ActiveRecord::Schema.define(version: 20170205172229) do
     t.string   "name",        null: false
     t.text     "description"
     t.datetime "start",       null: false
-    t.datetime "finish",      null: false
+    t.datetime "finish"
     t.datetime "created_at",  null: false
     t.datetime "updated_at",  null: false
     t.index ["finish"], name: "index_tasks_on_finish", using: :btree
