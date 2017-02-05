@@ -1,7 +1,7 @@
 Rails.application.routes.draw do
 
-  resources :tasks, only: [:create] do
-    put :finish, on: :member, via: :put
+  scope '/api' do
+    resources :tasks
   end
 
   mount_ember_app :ui, to: '/'
