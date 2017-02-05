@@ -1,0 +1,30 @@
+<table>
+  <tr>
+    <th>Name</th>
+    <th>Start</th>
+    <th>Finish</th>
+    <th>Duration</th>
+  </tr>
+  <% @tasks.each do |task| %>
+    <tr>
+      <td><%= task.name %></td>
+      <td><%= task.start.localtime.strftime('%R') %></td>
+      <td>
+        <% if task.finish? %>
+          <%= task.finish.localtime.strftime('%R') %>
+        <% else %>
+          <%= button_to 'Done', {
+            action: 'finish',
+            controller: 'tasks',
+            id: task.id
+          }, method: :put %>
+        <% end %>
+      </td>
+      <td><%= distance_of_time_in_words(task.start, task.finish || Time.now) %></td>
+    </tr>
+  <% end %>
+</table>
+<%= form_for Task.new do |form| %>
+  <%= form.text_field :name, placeholder: 'New Task' %>
+  <%= form.submit 'Start' %>
+<% end %>
