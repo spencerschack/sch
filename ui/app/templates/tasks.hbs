@@ -1,16 +1,1 @@
-<table>
-  <tr>
-    <th>Name</th>
-    <th>Start</th>
-    <th>Finish</th>
-    <th>Duration</th>
-  </tr>
-  {{#each model as |task|}}
-    <tr>
-      <td>{{task.name}}</td>
-      <td>{{moment-format task.start 'HH:mm'}}</td>
-      <td>{{moment-format task.finish 'HH:mm'}}</td>
-      <td>{{moment-duration task.duration}}</td>
-    </tr>
-  {{/each}}
-</table>
+{{tasks-timeline tasks=model}}

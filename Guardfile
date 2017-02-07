@@ -54,5 +54,10 @@ guard 'livereload' do
   watch(%r{api/app/helpers/.+\.rb})
   watch(%r{api/config/locales/.+\.yml})
 
-  watch %r{ui/app/\w+/.+\.(js|hbs|html|css|<other-extensions>)}
+  watch %r{ui/app/\w+/.+\.(js|hbs|css)} do |m|
+    case m[1]
+    when 'css' then '/assets/sch.css'
+    when 'js', 'hbs' then '/assets/sch.js'
+    end
+  end
 end

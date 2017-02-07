@@ -17,7 +17,6 @@ export default DS.Model.extend({
       finish = this.get('moment').moment(finish);
       return finish.diff(start);
     }
-    return start.toNow();
   }
 
 });

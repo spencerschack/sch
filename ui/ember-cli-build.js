@@ -6,6 +6,13 @@ module.exports = function(defaults) {
   var app = new EmberApp(defaults, {
     babel: {
       stage: 0
+    },
+    cssModules: {
+      plugins: {
+        before: [
+          require('postcss-nested')
+        ]
+      }
     }
   });
 

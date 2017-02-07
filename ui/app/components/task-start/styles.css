@@ -1,0 +1,16 @@
+.task-start {
+  composes: button from 'sch/styles/buttons';
+  background: hsl(50, 65%, 45%);
+
+  &:hover {
+    background: hsl(50, 65%, 50%);
+  }
+
+  &:active {
+    background: hsl(50, 65%, 40%);
+  }
+}
+
+.icon {
+  composes: icon from 'sch/styles/icons';
+}
