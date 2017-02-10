@@ -1,6 +1,5 @@
 .tasks-timeline {
   width: 250px;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+  height: 3000px;
+  position: relative;
 }

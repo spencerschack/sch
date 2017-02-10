@@ -1,4 +1,6 @@
 .task-start {
+  position: relative;
+  z-index: 1;
   composes: button from 'sch/styles/buttons';
   background: hsl(50, 65%, 45%);
 

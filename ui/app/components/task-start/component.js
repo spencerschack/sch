@@ -1,6 +1,7 @@
 import Ember from 'ember';
 import {on} from 'ember-computed-decorators';
 import service from 'ember-service/inject';
+import moment from 'moment';
 
 export default Ember.Component.extend({
 
@@ -12,14 +13,14 @@ export default Ember.Component.extend({
 
   @on('click')
   startTask() {
-    const now = new Date();
+    const now = moment();
     this.finishLastTask(now);
     this.createTask(now);
   },
 
   finishLastTask(finish) {
     const lastTask = this.get('lastTask');
-    if(!lastTask.get('finish')) {
+    if(lastTask && !lastTask.get('finish')) {
       lastTask.set('finish', finish);
       lastTask.save();
     }

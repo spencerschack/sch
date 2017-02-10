@@ -4,19 +4,19 @@ import computed from 'ember-computed-decorators';
 
 export default DS.Model.extend({
 
-  moment: service(),
-
   name: DS.attr('string'),
-  start: DS.attr('date'),
-  finish: DS.attr('date'),
+  start: DS.attr('moment'),
+  finish: DS.attr('moment'),
 
   @computed('start', 'finish')
   duration(start, finish) {
-    start = this.get('moment').moment(start);
-    if(finish) {
-      finish = this.get('moment').moment(finish);
+    if(finish)
       return finish.diff(start);
-    }
+  },
+
+  @computed('start', 'duration')
+  range(start, duration) {
+    return {start, duration};
   }
 
 });

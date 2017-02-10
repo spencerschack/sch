@@ -16,14 +16,13 @@ ActiveRecord::Schema.define(version: 20170205172229) do
   enable_extension "plpgsql"
 
   create_table "tasks", force: :cascade do |t|
-    t.string   "name",        null: false
+    t.string   "name"
     t.text     "description"
     t.datetime "start",       null: false
     t.datetime "finish"
     t.datetime "created_at",  null: false
     t.datetime "updated_at",  null: false
     t.index ["finish"], name: "index_tasks_on_finish", using: :btree
-    t.index ["name"], name: "index_tasks_on_name", using: :btree
     t.index ["start"], name: "index_tasks_on_start", using: :btree
   end
 

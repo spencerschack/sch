@@ -4,6 +4,4 @@ Rails.application.routes.draw do
     resources :tasks
   end
 
-  mount_ember_app :ui, to: '/'
-
 end

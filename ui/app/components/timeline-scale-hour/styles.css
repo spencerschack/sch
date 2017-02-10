@@ -1,0 +1,46 @@
+.container {
+  width: 100%;
+  position: absolute;
+}
+
+.mark {
+  width: 100%;
+  position: absolute;
+  border-width: 1px 0 0 0;
+  border-color: hsl(0, 0%, 85%);
+}
+
+.label {
+  width: 40px;
+  height: 20px;
+  line-height: 20px;
+  margin-top: -10px;
+  padding-right: 10px;
+  display: block;
+  text-align: right;
+  background: white;
+}
+
+.hour {
+  border-top-style: solid;
+  font-size: 12px;
+}
+
+.half-past,
+.quarter-past,
+.quarter-till {
+  border-top-style: dotted;
+  font-size: 10px;
+}
+
+.quarter-past {
+  top: 25%;
+}
+
+.half-past {
+  top: 50%;
+}
+
+.quarter-till {
+  top: 75%;
+}

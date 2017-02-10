@@ -1,38 +1,27 @@
 import Ember from 'ember';
-import computed from 'ember-computed-decorators';
+import {task, timeout} from 'ember-concurrency';
+import moment from 'moment';
+import {blur} from '../../utils/content-editable';
 
 export default Ember.Component.extend({
 
-  localClassNames: ['timeline-task'],
+  tagName: '',
 
-  attributeBindings: ['style'],
-
-  @computed('task.duration')
-  style(duration) {
-    const minutes = duration / 1000 / 60;
-    return `height: ${minutes * 10}px`;
-  },
+  save: task(function * () {
+    const task = this.get('task');
+    if(task.get('hasDirtyAttributes') || task.get('isNew')) {
+      yield timeout(500);
+      yield task.save();
+    }
+  }).restartable(),
 
   actions: {
 
-    save(){
-      const task = this.get('task');
-      if(task.get('hasDirtyAttributes') || task.get('isNew'))
-        this.get('task').save();
-    },
+    blur,
 
     finish() {
-      this.set('task.finish', new Date());
+      this.set('task.finish', moment());
       this.send('save');
-    },
-
-    blur(event) {
-      const input = document.createElement('input');
-      input.style.position = 'absolute';
-      input.style.top = 0;
-      document.body.appendChild(input);
-      input.focus();
-      document.body.removeChild(input);
     },
 
     destroy() {

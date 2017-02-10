@@ -1,26 +1,28 @@
-{{content-editable local-class="name" value=task.name
-  type="text" allowNewlines=false
-  autofocus=task.isNew
-  focus-out=(action "save") enter=(action "blur")}}
-<div local-class="start">
-  {{moment-format task.start 'HH:mm:ss'}}
-</div>
-{{#if task.finish}}
-  <div local-class="finish">
-    {{moment-format task.finish 'HH:mm:ss'}}
+<div local-class="container" style={{time-styles task.range containerRange}}>
+  {{content-editable local-class="name" value=task.name
+    type="text" allowNewlines=false
+    autofocus=task.isNew
+    key-up=(perform save) enter=(action "blur")}}
+  <div local-class="start">
+    {{task-time time=task.start save=(perform save)}}
   </div>
-  <div local-class="duration">
-    {{moment-duration task.duration}}
+  {{#if task.finish}}
+    <div local-class="finish">
+      {{task-time time=task.finish save=(perform save)}}
+    </div>
+    <div local-class="duration">
+      {{moment-duration task.duration}}
+    </div>
+  {{else}}
+    <div local-class="duration">
+      {{moment-duration (moment-from-now task.start)}}
+    </div>
+    <div local-class="finish-action" {{action "finish"}}>
+      <span local-class="icon">&times;</span>
+      Finish
+    </div>
+  {{/if}}
+  <div local-class="destroy" {{action "destroy"}}>
+    &times;
   </div>
-{{else}}
-  <div local-class="duration">
-    {{moment-duration (moment-from-now task.start)}}
-  </div>
-  <div local-class="finish-action" {{action "finish"}}>
-    <span local-class="icon">&times;</span>
-    Finish
-  </div>
-{{/if}}
-<div local-class="destroy" {{action "destroy"}}>
-  &times;
 </div>
