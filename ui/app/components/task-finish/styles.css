@@ -1,0 +1,10 @@
+.button {
+  composes: red-button from 'sch/styles/buttons';
+  margin-bottom: 10px;
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
+}
+
+.icon {
+  composes: icon from 'sch/styles/icons';
+}

@@ -1,17 +1,28 @@
 .container {
   width: 100%;
+  min-height: 30px;
   position: absolute;
   box-sizing: border-box;
-  margin-left: 50px;
-  padding: 5px 7px;
   border-radius: 5px;
   background: hsl(210, 65%, 40%);
   color: white;
+
+  &.is-unfinished,
+  &.is-adjacent-after {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  &.is-adjacent-before {
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+  }
 }
 
 .name {
+  height: 20px;
   display: inline-block;
-  margin: -2px -4px;
+  margin: 3px;
   padding: 2px 4px;
   font-weight: 500;
 
@@ -26,6 +37,9 @@
   position: absolute;
   left: 100%;
   margin-left: 5px;
+  font-size: 12px;
+  line-height: 12px;
+  color: hsl(0, 0%, 60%);
 }
 
 .start {
@@ -38,15 +52,10 @@
 
 .duration {
   position: absolute;
-  bottom: 5px;
+  top: 4px;
+  right: 7px;
   font-size: 12px;
   color: hsla(0, 0%, 0%, 0.5);
-}
-
-.finish-action {
-  composes: button from 'sch/styles/buttons';
-  position: absolute;
-  background: hsl(10, 65%, 55%);
 }
 
 .icon, .destroy {
@@ -54,6 +63,7 @@
 }
 
 .destroy {
+  display: none;
   padding: 0 6px;
   position: absolute;
   top: 0;
@@ -63,4 +73,10 @@
   &:hover {
     color: hsla(0, 0%, 0%, 0.75);
   }
+}
+
+.actions {
+  width: 100%;
+  position: absolute;
+  top: 100%;
 }

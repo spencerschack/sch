@@ -2,4 +2,8 @@
 {{#each tasks as |task|}}
   {{timeline-task task=task containerRange=range}}
 {{/each}}
-{{task-start lastTask=tasks.lastObject}}
+{{#if tasks.lastObject.finish}}
+  {{#timeline-now range=range}}
+    {{task-start}}
+  {{/timeline-now}}
+{{/if}}

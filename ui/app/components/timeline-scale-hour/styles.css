@@ -15,10 +15,9 @@
   height: 20px;
   line-height: 20px;
   margin-top: -10px;
-  padding-right: 10px;
+  margin-left: -50px;
   display: block;
   text-align: right;
-  background: white;
 }
 
 .hour {

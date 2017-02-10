@@ -1,5 +1,6 @@
 .tasks-timeline {
   width: 250px;
   height: 3000px;
+  padding-left: 50px;
   position: relative;
 }

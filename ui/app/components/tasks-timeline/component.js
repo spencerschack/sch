@@ -1,6 +1,6 @@
 import Ember from 'ember';
 import service from 'ember-service/inject';
-import computed from 'ember-computed-decorators';
+import computed, {observes} from 'ember-computed-decorators';
 
 export default Ember.Component.extend({
 
@@ -11,6 +11,14 @@ export default Ember.Component.extend({
   @computed('time')
   tasks(time) {
     return this.get('store').findAll('task');
+  },
+
+  @observes('tasks.[]')
+  markTaskNeighbors() {
+    this.get('tasks').forEach((task, index, tasks) => {
+      task.set('previous', tasks.objectAt(index - 1));
+      task.set('next', tasks.objectAt(index + 1));
+    });
   },
 
   @computed('time')

@@ -1,0 +1,10 @@
+{{#unless lastTask.finish}}
+  <div local-class="finish" {{action "finish"}}>
+    <span local-class="icon">&times;</span>
+    Finish
+  </div>
+{{/unless}}
+<div local-class="start" {{action "start"}}>
+  <span local-class="icon">+</span>
+  Start
+</div>

@@ -12,11 +12,6 @@ export default DS.Model.extend({
   duration(start, finish) {
     if(finish)
       return finish.diff(start);
-  },
-
-  @computed('start', 'duration')
-  range(start, duration) {
-    return {start, duration};
   }
 
 });

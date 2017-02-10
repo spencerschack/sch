@@ -1,16 +1,5 @@
-.task-start {
-  position: relative;
-  z-index: 1;
-  composes: button from 'sch/styles/buttons';
-  background: hsl(50, 65%, 45%);
-
-  &:hover {
-    background: hsl(50, 65%, 50%);
-  }
-
-  &:active {
-    background: hsl(50, 65%, 40%);
-  }
+.button {
+  composes: green-button from 'sch/styles/buttons';
 }
 
 .icon {
