@@ -1,0 +1,16 @@
+<button local-class="container {{if isOpen "is-open"}}" {{action "open"}}>
+  <span local-class="icon">▾</span>
+  <span local-class="label">
+    {{#if (and current (not current.finish))}}
+      Switch
+    {{else}}
+      Start
+    {{/if}}
+  </span>
+  {{keyboard-shortcut shortcut="KeyS" label="S" action=(action "open")
+    local-class="shortcut"}}
+  {{#if isOpen}}
+    {{input enter=(action "create") local-class="input"
+      focus-out=(action "close") escape-press=(action "close")}}
+  {{/if}}
+</button>

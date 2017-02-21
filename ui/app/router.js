@@ -7,9 +7,11 @@ const Router = Ember.Router.extend({
 });
 
 Router.map(function() {
-
   this.route('tasks', {path: '/tasks/:year/:month/:day/:hour'});
 
+  this.route('login', function() {
+    this.route('token', {path: '/:token'});
+  });
 });
 
 export default Router;

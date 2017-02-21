@@ -1,12 +1,11 @@
 
-import { timeStyles } from 'sch/helpers/time-styles';
+import { rangeStyles } from 'sch/helpers/time';
 import { module, test } from 'qunit';
 
 module('Unit | Helper | time styles');
 
 // Replace this with your real tests.
 test('it works', function(assert) {
-  let result = timeStyles([42]);
+  let result = rangeStyles([42]);
   assert.ok(result);
 });
-

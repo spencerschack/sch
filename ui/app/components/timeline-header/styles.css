@@ -1,0 +1,18 @@
+.container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 60px 12px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 21px;
+  z-index: 2;
+}
+
+.day, .time {
+  font-weight: 500;
+}
+
+.month, .date, .year {
+  font-weight: 300;
+}

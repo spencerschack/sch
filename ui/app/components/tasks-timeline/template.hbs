@@ -1,9 +1,15 @@
+{{timeline-header time=time}}
 {{timeline-scale range=range}}
 {{#each tasks as |task|}}
   {{timeline-task task=task containerRange=range}}
 {{/each}}
-{{#if tasks.lastObject.finish}}
-  {{#timeline-now range=range}}
-    {{task-start}}
-  {{/timeline-now}}
-{{/if}}
+{{#each pomodoros as |pomodoro|}}
+  {{timeline-pomodoro pomodoro=pomodoro containerRange=range}}
+{{/each}}
+<div local-class="actions" style={{range-position-styles (now) range}}>
+  {{task-next current=tasks.lastObject create=(action "createTask")
+    local-class="action"}}
+  {{pomodoro-next current=pomodoros.lastObject create=(action "createPomodoro")
+    local-class="action"}}
+</div>
+{{timeline-now-button visibleRange=visibleRange travel=travel}}

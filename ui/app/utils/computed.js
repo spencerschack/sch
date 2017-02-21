@@ -1,14 +1,15 @@
-import computed from 'ember-computed';
-import timeStylesHelper, {timePositionStyles as timePositionStylesHelper} from './time-styles';
+import computed, {on as onMacro} from 'ember-computed-decorators';
+import curriedComputed from 'ember-macro-helpers/curried-computed';
+import {styles, positionStyles} from './range';
 
-export function timeStyles(rangeKey, containerKey) {
-  return computed(rangeKey, containerKey, function() {
-    return timeStylesHelper(this.get(rangeKey), this.get(containerKey));
-  });
-}
+export const rangeStyles = curriedComputed((range, container) => {
+  return styles(range, container);
+});
 
-export function timePositionStyles(rangeKey, containerKey) {
-  return computed(rangeKey, containerKey, function() {
-    return timePositionStylesHelper(this.get(rangeKey), this.get(containerKey));
-  });
-}
+export const rangePositionStyles = curriedComputed((range, container) => {
+  return positionStyles(range, container);
+});
+
+export const equalMoments = curriedComputed((a, b) => {
+  return a && a.isSame(b);
+});

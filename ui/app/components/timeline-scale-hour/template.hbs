@@ -1,14 +1,14 @@
-<div local-class="container" style={{time-styles range containerRange}}>
+<div local-class="container" style={{range-styles range containerRange}}>
   <div local-class="hour mark">
-    <span local-class="label">{{moment-format range.start "HH:ss"}}</span>
+    <span local-class="label">{{format-moment range.start "ha"}}</span>
   </div>
   <div local-class="quarter-past mark">
-    <span local-class="label">:15</span>
+    <span local-class="label">15</span>
   </div>
   <div local-class="half-past mark">
-    <span local-class="label">:30</span>
+    <span local-class="label">30</span>
   </div>
   <div local-class="quarter-till mark">
-    <span local-class="label">:45</span>
+    <span local-class="label">45</span>
   </div>
 </div>

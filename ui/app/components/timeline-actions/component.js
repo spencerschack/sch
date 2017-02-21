@@ -3,28 +3,18 @@ import computed, {on} from 'ember-computed-decorators';
 import {task, timeout} from 'ember-concurrency';
 import service from 'ember-service/inject';
 import moment from 'moment';
-import {timePositionStyles} from '../../utils/computed';
+import {rangePositionStyles} from '../../utils/computed';
 
 export default Ember.Component.extend({
 
   store: service(),
+  clock: service(),
 
   localClassNames: ['container'],
 
   attributeBindings: ['style'],
 
-  style: timePositionStyles('now', 'range'),
-
-  @computed
-  now() {
-    this.get('tick').perform();
-    return moment();
-  },
-
-  tick: task(function * () {
-    yield timeout(1000);
-    this.notifyPropertyChange('tick');
-  }).drop(),
+  style: rangePositionStyles('clock.moment', 'range'),
 
   actions: {
 

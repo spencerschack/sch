@@ -1,2 +1,12 @@
-<span local-class="icon">+</span>
-Start
+<div local-class="button" {{action "showMenu"}}>
+  <span local-class="icon">+</span>
+  <span local-class="label">Start</span>
+  {{#if showMenu}}
+    {{keyboard-shortcut shortcut="Escape" label="ESC" action=(action "hideMenu")
+      local-class="right"}}
+    {{project-select select=(action "start")}}
+  {{else}}
+    {{keyboard-shortcut shortcut="KeyS" label="S" action=(action "showMenu")
+      local-class="right"}}
+  {{/if}}
+</div>

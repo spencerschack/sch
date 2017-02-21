@@ -1,31 +1,22 @@
-{{content-editable local-class="name" value=task.name
-  type="text" allowNewlines=false
-  autofocus=task.isNew
-  key-up=(perform save) enter=(action "blur")}}
-<div local-class="start {{if task.finish "is-finished" "is-unfinished"}}">
-  {{task-time time=task.start save=(perform save)}}
+{{time-handle time=task.start drag=(action "drag" "start")
+  local-class="start-handle"}}
+{{#if task.finish}}
+  {{time-handle time=task.finish drag=(action "drag" "finish")
+    local-class="finish-handle"}}
+{{/if}}
+<div local-class="project">
+  {{task.name}}
+  <!-- {{project-select select=select}} -->
 </div>
 {{#if task.finish}}
-  <div local-class="finish">
-    {{task-time time=task.finish save=(perform save)}}
-  </div>
   <div local-class="duration">
-    {{moment-duration task.duration}}
+    {{format-duration task.duration}}
   </div>
 {{else}}
-  <div local-class="finish">
-    {{moment-format now "HH:mm:ss"}}
-  </div>
   <div local-class="duration">
-    {{moment-duration range.duration}}
+    {{format-duration range.duration}}
   </div>
 {{/if}}
 <div local-class="destroy" {{action "destroy"}}>
   &times;
 </div>
-{{#unless task.finish}}
-  <div local-class="actions">
-    {{task-finish task=task}}
-    {{task-start lastTask=task}}
-  </div>
-{{/unless}}

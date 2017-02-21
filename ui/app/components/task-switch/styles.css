@@ -1,0 +1,19 @@
+.container {
+  composes: blue-button from 'sch/styles/buttons';
+  width: 100%;
+  position: absolute;
+  margin-top: 10px;
+}
+
+.label {
+  composes: label from 'sch/styles/buttons';
+}
+
+.icon {
+  composes: icon from 'sch/styles/buttons';
+  composes: icon from 'sch/styles/icons';
+}
+
+.shortcut {
+  composes: right from 'sch/styles/buttons';
+}

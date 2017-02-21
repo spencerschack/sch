@@ -1,0 +1,56 @@
+.container {
+  width: 25px;
+  position: absolute;
+  right: 0;
+  border-radius: 5px;
+  overflow: hidden;
+
+  &.is-pomodoro {
+    background: hsl(50, 65%, 45%);
+  }
+
+  &.is-break {
+    background: hsl(10, 70%, 55%);
+  }
+
+  &.is-adjacent-after {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  &.is-adjacent-before {
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+  }
+}
+
+.start {
+  position: absolute;
+  left: 100%;
+  margin-left: 5px;
+}
+
+.time-remaining {
+  position: absolute;
+  bottom: 0;
+  left: 100%;
+  margin-left: 5px;
+  font-size: 18px;
+  color: hsl(50, 65%, 45%);
+}
+
+.excess {
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  border-top: 1px solid hsla(0, 0%, 0%, 0.05);
+  background: linear-gradient(45deg,
+    hsla(0, 0%, 0%, 0.05) 25%,
+    hsla(0, 0%, 100%, 0.05) 25%,
+    hsla(0, 0%, 100%, 0.05) 50%,
+    hsla(0, 0%, 0%, 0.05) 50%,
+    hsla(0, 0%, 0%, 0.05) 75%,
+    hsla(0, 0%, 100%, 0.05) 75%,
+    hsla(0, 0%, 100%, 0.05));
+  background-size: 8px 8px;
+}

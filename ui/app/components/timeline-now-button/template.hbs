@@ -1,0 +1,8 @@
+<div local-class="container {{if isBetween "is-between"}}" {{action "travelToNow"}}>
+  <span local-class="icon">
+    {{if isBefore "▴" "▾"}}
+  </span>
+  <span local-class="label">Now</span>
+  {{keyboard-shortcut shortcut="KeyN" label="N" action=(action "travelToNow")
+    local-class="shortcut"}}
+</div>

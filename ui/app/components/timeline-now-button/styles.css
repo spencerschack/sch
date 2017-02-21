@@ -1,0 +1,25 @@
+.container {
+  composes: red-button from 'sch/styles/buttons';
+  position: fixed;
+  bottom: 10px;
+  left: 60px;
+  transition: bottom ease-out 150ms;
+
+  &.is-between {
+    bottom: -30px;
+  }
+}
+
+.label {
+  composes: label from 'sch/styles/buttons';
+}
+
+.icon {
+  composes: icon from 'sch/styles/icons';
+  composes: icon from 'sch/styles/buttons';
+}
+
+.shortcut {
+  composes: right from 'sch/styles/buttons';
+  margin-left: 15px;
+}

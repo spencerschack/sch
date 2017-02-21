@@ -11,12 +11,15 @@
 }
 
 .label {
-  width: 40px;
   height: 20px;
   line-height: 20px;
-  margin-top: -10px;
-  margin-left: -50px;
+  position: absolute;
+  top: -10px;
+  right: 100%;
+  margin-right: -50px;
+  padding: 0 5px;
   display: block;
+  background: white;
   text-align: right;
 }
 
@@ -30,6 +33,7 @@
 .quarter-till {
   border-top-style: dotted;
   font-size: 10px;
+  color: hsl(0, 0%, 50%);
 }
 
 .quarter-past {

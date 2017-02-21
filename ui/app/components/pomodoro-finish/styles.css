@@ -1,0 +1,12 @@
+.container {
+  composes: red-button from 'sch/styles/buttons';
+}
+
+.label {
+  composes: label from 'sch/styles/buttons';
+}
+
+.icon {
+  composes: icon from 'sch/styles/buttons';
+  composes: icon from 'sch/styles/icons';
+}

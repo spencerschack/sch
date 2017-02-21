@@ -1,3 +1,4 @@
 .task-time {
+  composes: time from 'sch/styles/time';
   display: flex;
 }

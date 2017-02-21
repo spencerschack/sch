@@ -1,17 +1,14 @@
 import DS from 'ember-data';
-import service from 'ember-service/inject';
-import computed from 'ember-computed-decorators';
+import TimeRange from './mixins/time-range';
+import Adjacent from './mixins/adjacent';
 
-export default DS.Model.extend({
+export default DS.Model.extend(
+  TimeRange,
+  Adjacent('task'),
+{
 
   name: DS.attr('string'),
-  start: DS.attr('moment'),
-  finish: DS.attr('moment'),
 
-  @computed('start', 'finish')
-  duration(start, finish) {
-    if(finish)
-      return finish.diff(start);
-  }
+  project: DS.belongsTo({async: false})
 
 });

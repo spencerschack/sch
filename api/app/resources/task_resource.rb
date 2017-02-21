@@ -1,5 +1,10 @@
 class TaskResource < JSONAPI::Resource
 
-  attributes :name, :start, :finish
+  include RangeResource
+  include UserOwnedResource
+
+  attributes :name
+
+  has_one :project, always_include_linkage_data: true
 
 end

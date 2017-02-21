@@ -1,7 +1,17 @@
 .button {
   composes: green-button from 'sch/styles/buttons';
+  position: relative;
+}
+
+.label {
+  composes: label from 'sch/styles/buttons';
 }
 
 .icon {
   composes: icon from 'sch/styles/icons';
+  composes: icon from 'sch/styles/buttons';
+}
+
+.right {
+  composes: right from 'sch/styles/buttons';
 }

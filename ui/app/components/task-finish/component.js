@@ -10,6 +10,14 @@ export default Ember.Component.extend({
     const task = this.get('task');
     task.set('finish', moment());
     task.save();
+  },
+
+  actions: {
+
+    finish() {
+      this.finish();
+    }
+
   }
 
 });

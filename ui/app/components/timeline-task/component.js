@@ -2,62 +2,50 @@ import Ember from 'ember';
 import service from 'ember-service/inject';
 import {task, timeout} from 'ember-concurrency';
 import computed from 'ember-computed-decorators';
-import moment from 'moment';
-import {blur} from '../../utils/content-editable';
-import {timeStyles} from '../../utils/computed';
-
-function equalMoments(a, b) {
-  return Ember.computed(a, b, function() {
-    const aMoment = this.get(a);
-    return aMoment && aMoment.isSame(this.get(b));
-  });
-}
+import Range from '../../utils/range';
+import {rangeStyles} from '../../utils/computed';
 
 export default Ember.Component.extend({
 
   store: service(),
+  clock: service(),
 
   localClassNames: ['container'],
   localClassNameBindings: [
-    'task.finish:is-finished:is-unfinished',
-    'isAdjacentAfter', 'isAdjacentBefore'
+    "task.finish:is-finished:is-unfinished",
+    "task.isAdjacentBefore:is-adjacent-before",
+    "task.isAdjacentAfter:is-adjacent-after"
   ],
 
   attributeBindings: ['style'],
+  style: rangeStyles('range', 'containerRange'),
 
-  style: timeStyles('range', 'containerRange'),
-
-  isAdjacentBefore: equalMoments('task.start', 'task.previous.finish'),
-  isAdjacentAfter: equalMoments('task.finish', 'task.next.start'),
-
-  @computed('task.start,task.duration,now')
+  @computed('task.start,task.duration,clock.moment')
   range(start, duration, now) {
-    return {start, duration: duration || now.diff(start)};
+    return Range.create({start, duration: duration || now.diff(start)});
   },
-
-  @computed
-  now() {
-    if(!this.get('task.finish'))
-      this.get('tick').perform();
-    return moment();
-  },
-
-  tick: task(function * () {
-    yield timeout(1000);
-    this.notifyPropertyChange('now');
-  }).drop(),
 
   save: task(function * () {
     const task = this.get('task');
     if(task.get('hasDirtyAttributes') || task.get('isNew')) {
       yield timeout(500);
-      yield task.save();
+      task.save();
     }
   }).restartable(),
 
   actions: {
 
-    blur,
+    drag(attribute, {clientY: coordinate}) {
+      const {top, bottom, height} = this.element.getBoundingClientRect();
+      const msPerPixel = this.get('range.duration') / height;
+      const pixelDiff = attribute === 'start' ?
+        coordinate - top :
+        bottom - coordinate;
+      const msDiff = pixelDiff * msPerPixel;
+      const task = this.get('task');
+      const time = task.get(attribute).clone();
+      task.set(attribute, time.add(msDiff));
+    },
 
     destroy() {
       this.get('task').destroyRecord();
