@@ -1,0 +1,11 @@
+{
+  "name": "sch",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:spencerschack/sch.git",
+  "author": "Spencer Schack <spencer.schack@instacart.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "^0.51.6"
+  }
+}
