@@ -1,11 +1,26 @@
 {
   "name": "sch",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "repository": "git@github.com:spencerschack/sch.git",
   "author": "Spencer Schack <spencer.schack@instacart.com>",
   "license": "MIT",
+  "scripts": {
+    "worktree-status": "tsx worktree-status.ts",
+    "worktree-next": "tsx worktree-status.ts --next",
+    "worktree-new": "tsx worktree-new.ts",
+    "worktree-config": "tsx worktree-config.ts",
+    "worktree-remove": "tsx worktree-remove.ts",
+    "window": "tsx window-management.ts"
+  },
   "dependencies": {
-    "@mariozechner/pi-coding-agent": "^0.51.6"
+    "@mariozechner/pi-coding-agent": "^0.51.6",
+    "pretty-ms": "^9.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
   }
 }
