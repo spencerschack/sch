@@ -5,7 +5,7 @@ import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
 import prettyMs from "pretty-ms";
 import { fetchAllLocalWorktreeInfo, fetchAllRemoteWorktreeInfo, mergeWorktreeData, sortWorktrees, openUrl } from "./worktree-status.js";
-import { writeWorktreeConfig, readWorktreeConfig } from "./worktree-config.js";
+import { writeWorktreeConfig, readWorktreeConfig, WORKTREES_DIR } from "./worktree-config.js";
 import { formatAgentStatus, formatGitStatus, isBusyStatus } from "./render-table.js";
 import { createWorktree, WORKTREE_CONFIGS } from "./worktree-new.js";
 import { removeWorktreeFull } from "./worktree-remove.js";
@@ -48,6 +48,16 @@ function useFocused() {
 async function getBentoCommit(): Promise<string> {
   const { stdout } = await execAsync(`git -C "${BENTO_DIR}" rev-parse HEAD`);
   return stdout.trim();
+}
+
+async function getWorktreeCommit(worktreeName: string): Promise<string> {
+  const worktreePath = join(WORKTREES_DIR, worktreeName);
+  const { stdout } = await execAsync(`git -C "${worktreePath}" rev-parse HEAD`);
+  return stdout.trim();
+}
+
+async function checkoutCommitInBento(commit: string): Promise<void> {
+  await execAsync(`git -C "${BENTO_DIR}" checkout "${commit}" --detach`);
 }
 
 function getStatusColor(status: PrStatus): string | undefined {
@@ -258,19 +268,21 @@ interface FooterProps {
   refreshing: boolean;
   message: string | null;
   focused: boolean;
-  openAction: string;
+  showDelete: boolean;
 }
 
-function Footer({ refreshing, message, focused, openAction }: FooterProps) {
+function Footer({ refreshing, message, focused, showDelete }: FooterProps) {
   return (
-    <Box justifyContent="space-between">
+    <Box flexDirection="column">
       <Text dimColor>
+        <Text color="cyan">↵</Text>{" Cursor   "}
+        <Text color="cyan">⇥</Text>{" PR   "}
+        {showDelete && <><Text color="cyan">⌫</Text>{" Delete   "}</>}
         <Text color="cyan">P</Text>{"ause   "}
         <Text color="cyan">D</Text>{"ep   "}
         <Text color="cyan">Q</Text>{"A   "}
         <Text color="cyan">R</Text>{"efresh   "}
-        <Text color="cyan">N</Text>{"ew   "}
-        <Text color="cyan">↵</Text>{` ${openAction}`}
+        <Text color="cyan">N</Text>{"ew"}
       </Text>
       {message ? (
         <Text color="green">{message}</Text>
@@ -348,13 +360,13 @@ function useWorktreeData(paused: boolean) {
     return sortWorktrees(merged);
   }, [localData, remoteData]);
 
-  return { data, loading, lastRemoteRefresh, refresh };
+  return { data, loading, lastRemoteRefresh, refresh, refreshLocal };
 }
 
 function WorktreeApp() {
   const { exit } = useApp();
   const focused = useFocused();
-  const { data, loading, lastRemoteRefresh, refresh } = useWorktreeData(!focused);
+  const { data, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -381,32 +393,36 @@ function WorktreeApp() {
 
   const selectedWorktree = data[selected];
 
-  const openAction = selectedWorktree?.prStatus === "merged"
-    ? "Remove"
-    : selectedWorktree?.prUrl
-      ? "Open PR"
-      : "Open Cursor";
+  const showDelete = selectedWorktree?.prStatus === "merged";
 
   const handleOpen = useCallback(async () => {
     if (!selectedWorktree) return;
-    
-    if (selectedWorktree.prStatus === "merged") {
-      setMessage(`Removing ${selectedWorktree.name}...`);
-      try {
-        await removeWorktreeFull(selectedWorktree.name);
-        setMessage(`Removed: ${selectedWorktree.name}`);
-        await refresh();
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        setMessage(`Failed to remove: ${msg}`);
-      }
+    await openUrl(selectedWorktree.cursorUrl);
+    setMessage(`Opened: ${selectedWorktree.name}`);
+  }, [selectedWorktree]);
+
+  const handleOpenPr = useCallback(async () => {
+    if (!selectedWorktree?.prUrl) return;
+    await openUrl(selectedWorktree.prUrl);
+    setMessage(`Opened PR: ${selectedWorktree.name}`);
+  }, [selectedWorktree]);
+
+  const handleDelete = useCallback(async () => {
+    if (!selectedWorktree) return;
+    if (selectedWorktree.prStatus !== "merged") {
+      setMessage(`Cannot delete: PR not merged`);
       return;
     }
-    
-    const url = selectedWorktree.prUrl ?? selectedWorktree.cursorUrl;
-    await openUrl(url);
-    setMessage(`Opened: ${selectedWorktree.name}`);
-  }, [selectedWorktree, refresh]);
+    setMessage(`Removing ${selectedWorktree.name}...`);
+    try {
+      await removeWorktreeFull(selectedWorktree.name);
+      setMessage(`Removed: ${selectedWorktree.name}`);
+      await refreshLocal();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setMessage(`Failed to remove: ${msg}`);
+    }
+  }, [selectedWorktree, refreshLocal]);
 
   const handlePause = useCallback(async () => {
     if (!selectedWorktree) return;
@@ -414,17 +430,33 @@ function WorktreeApp() {
     config.paused = !config.paused;
     await writeWorktreeConfig(selectedWorktree.name, config);
     setMessage(`${selectedWorktree.name}: ${config.paused ? "paused" : "unpaused"}`);
-    await refresh();
-  }, [selectedWorktree, refresh]);
+    await refreshLocal();
+  }, [selectedWorktree, refreshLocal]);
 
   const handleQa = useCallback(async () => {
     if (!selectedWorktree) return;
-    const config = await readWorktreeConfig(selectedWorktree.name);
-    config.qaCommit = await getBentoCommit();
-    await writeWorktreeConfig(selectedWorktree.name, config);
-    setMessage(`${selectedWorktree.name}: QA recorded`);
-    await refresh();
-  }, [selectedWorktree, refresh]);
+
+    try {
+      const [worktreeCommit, bentoCommit] = await Promise.all([
+        getWorktreeCommit(selectedWorktree.name),
+        getBentoCommit(),
+      ]);
+
+      if (worktreeCommit !== bentoCommit) {
+        setMessage(`Checking out in bento...`);
+        await checkoutCommitInBento(worktreeCommit);
+      }
+
+      const config = await readWorktreeConfig(selectedWorktree.name);
+      config.qaCommit = worktreeCommit;
+      await writeWorktreeConfig(selectedWorktree.name, config);
+      setMessage(`${selectedWorktree.name}: QA recorded`);
+      await refreshLocal();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setMessage(`QA failed: ${msg}`);
+    }
+  }, [selectedWorktree, refreshLocal]);
 
   const handleDependency = useCallback(async () => {
     if (!selectedWorktree) return;
@@ -435,13 +467,13 @@ function WorktreeApp() {
       delete config.dependsOn;
       await writeWorktreeConfig(selectedWorktree.name, config);
       setMessage(`${selectedWorktree.name}: dependency removed`);
-      await refresh();
+      await refreshLocal();
       return;
     }
 
     // Otherwise, enter selection mode
     setInputMode("selectDependency");
-  }, [selectedWorktree, refresh]);
+  }, [selectedWorktree, refreshLocal]);
 
   const handleDependencySelect = useCallback(async (item: { label: string; value: string }) => {
     if (!selectedWorktree) return;
@@ -451,8 +483,8 @@ function WorktreeApp() {
     config.dependsOn = item.value;
     await writeWorktreeConfig(selectedWorktree.name, config);
     setMessage(`${selectedWorktree.name}: now depends on ${item.value}`);
-    await refresh();
-  }, [selectedWorktree, refresh]);
+    await refreshLocal();
+  }, [selectedWorktree, refreshLocal]);
 
   // Options for dependency selection (all worktrees except the current one)
   const dependencyOptions = data
@@ -484,13 +516,13 @@ function WorktreeApp() {
     try {
       const result = await createWorktree(newWorktreeBase, desc);
       setMessage(`Created: ${result.worktreeName}`);
-      await refresh();
+      await refreshLocal();
     } catch (err) {
       setMessage(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setIsCreating(false);
     }
-  }, [newWorktreeBase, refresh]);
+  }, [newWorktreeBase, refreshLocal]);
 
   const handleInputCancel = useCallback(() => {
     setInputMode("normal");
@@ -520,6 +552,12 @@ function WorktreeApp() {
     }
     if (key.return) {
       handleOpen();
+    }
+    if (key.tab) {
+      handleOpenPr();
+    }
+    if (key.delete) {
+      handleDelete();
     }
     if (input === "p") {
       handlePause();
@@ -602,7 +640,7 @@ function WorktreeApp() {
       );
     }
 
-    return <Footer refreshing={loading} message={message} focused={focused} openAction={openAction} />;
+    return <Footer refreshing={loading} message={message} focused={focused} showDelete={showDelete} />;
   };
 
   return (
