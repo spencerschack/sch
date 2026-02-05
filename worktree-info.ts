@@ -26,13 +26,18 @@ export type PrStatus =
   | "merged"
   | "closed";
 
-export interface WorktreeInfo {
+export interface LocalWorktreeInfo {
   name: string;
   cursorUrl: string;
   agent: AgentStatusResult;
   git: GitStatusResult;
-  prStatus: PrStatus;
-  prUrl: string | null;
   paused: boolean;
   qaStatus: QaStatus;
 }
+
+export interface RemoteWorktreeInfo {
+  prStatus: PrStatus;
+  prUrl: string | null;
+}
+
+export interface WorktreeInfo extends LocalWorktreeInfo, RemoteWorktreeInfo {}

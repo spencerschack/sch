@@ -4,12 +4,12 @@ import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
 import prettyMs from "pretty-ms";
-import { fetchWorktrees, openUrl } from "./worktree-status.js";
+import { fetchAllLocalWorktreeInfo, fetchAllRemoteWorktreeInfo, mergeWorktreeData, sortWorktrees, openUrl } from "./worktree-status.js";
 import { writeWorktreeConfig, readWorktreeConfig } from "./worktree-config.js";
 import { formatAgentStatus, formatGitStatus, isBusyStatus } from "./render-table.js";
 import { createWorktree, WORKTREE_CONFIGS } from "./worktree-new.js";
 import { removeWorktreeFull } from "./worktree-remove.js";
-import type { WorktreeInfo, PrStatus } from "./worktree-info.js";
+import type { WorktreeInfo, PrStatus, LocalWorktreeInfo, RemoteWorktreeInfo } from "./worktree-info.js";
 import { execAsync } from "./utils.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -17,7 +17,8 @@ import { join } from "node:path";
 type InputMode = "normal" | "inputBase" | "inputDescription";
 
 const BENTO_DIR = join(homedir(), "carrot");
-const REFRESH_INTERVAL = 60000; // 1 minute
+const LOCAL_REFRESH_INTERVAL = 5000; // 5 seconds
+const REMOTE_REFRESH_INTERVAL = 60000; // 1 minute
 
 function useFocused() {
   const [focused, setFocused] = useState(true);
@@ -61,6 +62,7 @@ function getStatusColor(status: PrStatus): string | undefined {
     case "frozen":
       return "yellow";
     case "running":
+      return "greenBright";
     case "queued":
       return "cyan";
     case "waiting":
@@ -132,6 +134,36 @@ function computeColumnWidths(data: WorktreeInfo[]): ColumnWidths {
   return widths;
 }
 
+type HighlightColumn = "agent" | "git" | "qa" | "pr" | null;
+
+function getHighlightColumn(wt: WorktreeInfo): HighlightColumn {
+  // Priority 1: PR issues that block progress
+  if (wt.prStatus === "failed" || wt.prStatus === "expired" || wt.prStatus === "assign" || wt.prStatus === "frozen") {
+    return "pr";
+  }
+  // Priority 2: Agent needs attention (idle when PR isn't busy)
+  if (wt.agent.status === "idle" && !isBusyStatus(wt.prStatus)) {
+    return "agent";
+  }
+  // Priority 3: QA is stale
+  if (wt.qaStatus === "stale") {
+    return "qa";
+  }
+  // Priority 4: Uncommitted changes
+  if (wt.git.status === "changed") {
+    return "git";
+  }
+  // Priority 5: PR is running/queued (positive status)
+  if (wt.prStatus === "running" || wt.prStatus === "queued" || wt.prStatus === "approved" || wt.prStatus === "waiting") {
+    return "pr";
+  }
+  // Priority 6: Agent is active
+  if (wt.agent.status === "active") {
+    return "agent";
+  }
+  return null;
+}
+
 interface WorktreeRowProps {
   wt: WorktreeInfo;
   selected: boolean;
@@ -142,6 +174,7 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
   const row = getRowData(wt);
   const bgColor = selected ? "whiteBright" : undefined;
   const dimmed = wt.paused;
+  const highlight = dimmed ? null : getHighlightColumn(wt);
 
   // Pad each cell to fill its column width, plus 2 for gap
   const gap = "  ";
@@ -155,7 +188,7 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
   return (
     <Box>
       <Text backgroundColor={bgColor} dimColor={dimmed}>
-        <Text color={row.needsAttention ? "red" : dimmed ? undefined : undefined}>
+        <Text color={row.needsAttention ? "red" : undefined}>
           {attentionPad}
         </Text>
         {gap}
@@ -163,19 +196,19 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
           {namePad}
         </Text>
         {gap}
-        <Text color={dimmed ? undefined : getAgentColor(wt.agent.status)}>
+        <Text color={highlight === "agent" ? getAgentColor(wt.agent.status) : undefined}>
           {agentPad}
         </Text>
         {gap}
-        <Text color={dimmed ? undefined : (wt.git.status === "changed" ? "yellow" : undefined)}>
+        <Text color={highlight === "git" ? "yellow" : undefined}>
           {gitPad}
         </Text>
         {gap}
-        <Text color={dimmed ? undefined : getQaColor(wt.qaStatus)}>
+        <Text color={highlight === "qa" ? getQaColor(wt.qaStatus) : undefined}>
           {qaPad}
         </Text>
         {gap}
-        <Text color={dimmed ? undefined : getStatusColor(wt.prStatus)}>
+        <Text color={highlight === "pr" ? getStatusColor(wt.prStatus) : undefined}>
           {prPad}
         </Text>
       </Text>
@@ -185,10 +218,21 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
 
 interface TableHeaderProps {
   widths: ColumnWidths;
+  lastRemoteRefresh: Date | null;
 }
 
-function TableHeader({ widths }: TableHeaderProps) {
+function TableHeader({ widths, lastRemoteRefresh }: TableHeaderProps) {
+  // Tick every second to update the time ago display
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const gap = "  ";
+  const prHeader = lastRemoteRefresh
+    ? `PR (${Math.floor((Date.now() - lastRemoteRefresh.getTime()) / 60000)}m)`
+    : "PR";
   return (
     <Box>
       <Text dimColor>
@@ -202,7 +246,7 @@ function TableHeader({ widths }: TableHeaderProps) {
         {gap}
         {"QA".padEnd(widths.qa)}
         {gap}
-        {"PR".padEnd(widths.pr)}
+        {prHeader.padEnd(widths.pr)}
       </Text>
     </Box>
   );
@@ -210,23 +254,12 @@ function TableHeader({ widths }: TableHeaderProps) {
 
 interface FooterProps {
   refreshing: boolean;
-  lastRefresh: Date | null;
   message: string | null;
   focused: boolean;
   openAction: string;
 }
 
-function Footer({ refreshing, lastRefresh, message, focused, openAction }: FooterProps) {
-  // Tick every second to update the time ago display
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const timeAgo = lastRefresh 
-    ? prettyMs(Date.now() - lastRefresh.getTime(), { compact: true }) + " ago"
-    : "never";
+function Footer({ refreshing, message, focused, openAction }: FooterProps) {
   return (
     <Box justifyContent="space-between">
       <Text dimColor>
@@ -241,41 +274,61 @@ function Footer({ refreshing, lastRefresh, message, focused, openAction }: Foote
       ) : refreshing ? (
         <Text color="cyan">Refreshing...</Text>
       ) : !focused ? (
-        <Text color="yellow">Paused (unfocused) · {timeAgo}</Text>
-      ) : (
-        <Text dimColor>Updated {timeAgo}</Text>
-      )}
+        <Text color="yellow">Paused (unfocused)</Text>
+      ) : null}
     </Box>
   );
 }
 
 function useWorktreeData(paused: boolean) {
-  const [data, setData] = useState<WorktreeInfo[]>([]);
+  const [localData, setLocalData] = useState<LocalWorktreeInfo[]>([]);
+  const [remoteData, setRemoteData] = useState<Map<string, RemoteWorktreeInfo>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [lastRemoteRefresh, setLastRemoteRefresh] = useState<Date | null>(null);
+
+  const refreshLocal = useCallback(async () => {
+    const local = await fetchAllLocalWorktreeInfo();
+    setLocalData(local);
+    return local;
+  }, []);
+
+  const refreshRemote = useCallback(async (names: string[]) => {
+    if (names.length === 0) return;
+    const remote = await fetchAllRemoteWorktreeInfo(names);
+    setRemoteData(remote);
+    setLastRemoteRefresh(new Date());
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const worktrees = await fetchWorktrees();
-      setData(worktrees);
-      setLastRefresh(new Date());
+      const local = await refreshLocal();
+      await refreshRemote(local.map((l) => l.name));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshLocal, refreshRemote]);
 
   // Initial load
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Periodic refresh when not paused
+  // Periodic local refresh (fast, every 5 seconds)
   useEffect(() => {
     if (paused) return;
-    const id = setInterval(refresh, REFRESH_INTERVAL);
+    const id = setInterval(refreshLocal, LOCAL_REFRESH_INTERVAL);
     return () => clearInterval(id);
-  }, [refresh, paused]);
+  }, [refreshLocal, paused]);
+
+  // Periodic remote refresh (slow, every 60 seconds)
+  useEffect(() => {
+    if (paused) return;
+    const names = localData.map((l) => l.name);
+    if (names.length === 0) return;
+    const id = setInterval(() => refreshRemote(names), REMOTE_REFRESH_INTERVAL);
+    return () => clearInterval(id);
+  }, [refreshRemote, localData, paused]);
 
   // Refresh when becoming unpaused (regaining focus)
   const prevPaused = React.useRef(paused);
@@ -286,13 +339,19 @@ function useWorktreeData(paused: boolean) {
     prevPaused.current = paused;
   }, [paused, refresh]);
 
-  return { data, loading, lastRefresh, refresh };
+  // Merge local and remote data
+  const data = React.useMemo(() => {
+    const merged = mergeWorktreeData(localData, remoteData);
+    return sortWorktrees(merged);
+  }, [localData, remoteData]);
+
+  return { data, loading, lastRemoteRefresh, refresh };
 }
 
 function WorktreeApp() {
   const { exit } = useApp();
   const focused = useFocused();
-  const { data, loading, lastRefresh, refresh } = useWorktreeData(!focused);
+  const { data, loading, lastRemoteRefresh, refresh } = useWorktreeData(!focused);
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -495,13 +554,13 @@ function WorktreeApp() {
       );
     }
 
-    return <Footer refreshing={loading} lastRefresh={lastRefresh} message={message} focused={focused} openAction={openAction} />;
+    return <Footer refreshing={loading} message={message} focused={focused} openAction={openAction} />;
   };
 
   return (
     <Box flexDirection="column">
       <Box flexDirection="column">
-        <TableHeader widths={widths} />
+        <TableHeader widths={widths} lastRemoteRefresh={lastRemoteRefresh} />
         {data.map((wt, i) => (
           <WorktreeRow key={wt.name} wt={wt} selected={i === selected} widths={widths} />
         ))}

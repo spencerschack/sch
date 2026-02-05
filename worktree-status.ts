@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { WORKTREES_DIR, readWorktreeConfig, WorktreeConfig } from "./worktree-config.js";
 import { execAsync, exists, isMain } from "./utils.js";
-import type { AgentStatusResult, GitStatusResult, PrStatus, QaStatus, WorktreeInfo } from "./worktree-info.js";
+import type { AgentStatusResult, GitStatusResult, LocalWorktreeInfo, PrStatus, QaStatus, RemoteWorktreeInfo, WorktreeInfo } from "./worktree-info.js";
 import { isBusyStatus, renderWorktreeTable } from "./render-table.js";
 
 const CURSOR_PROJECTS_DIR = join(homedir(), ".cursor", "projects");
@@ -284,16 +284,15 @@ function getWorkingDirectory(worktreePath: string, name: string): string {
   return worktreePath;
 }
 
-export async function processWorktree(entry: string): Promise<WorktreeInfo | null> {
+export async function fetchLocalWorktreeInfo(entry: string): Promise<LocalWorktreeInfo | null> {
   if (entry.startsWith("@")) return null;
 
   const worktreePath = join(WORKTREES_DIR, entry);
   if (!(await stat(worktreePath)).isDirectory()) return null;
 
-  const agent = await getAgentStatus(entry);
-  const [git, prResult, config] = await Promise.all([
+  const [agent, git, config] = await Promise.all([
+    getAgentStatus(entry),
     getGitInfo(worktreePath),
-    getPrStatus(worktreePath),
     readWorktreeConfig(entry),
   ]);
 
@@ -306,11 +305,26 @@ export async function processWorktree(entry: string): Promise<WorktreeInfo | nul
     cursorUrl,
     agent,
     git,
-    prStatus: prResult.status,
-    prUrl: prResult.url,
     paused: config.paused ?? false,
     qaStatus,
   };
+}
+
+export async function fetchRemoteWorktreeInfo(entry: string): Promise<RemoteWorktreeInfo> {
+  const worktreePath = join(WORKTREES_DIR, entry);
+  const prResult = await getPrStatus(worktreePath);
+  return {
+    prStatus: prResult.status,
+    prUrl: prResult.url,
+  };
+}
+
+export async function processWorktree(entry: string): Promise<WorktreeInfo | null> {
+  const local = await fetchLocalWorktreeInfo(entry);
+  if (!local) return null;
+
+  const remote = await fetchRemoteWorktreeInfo(entry);
+  return { ...local, ...remote };
 }
 
 export async function openUrl(url: string): Promise<void> {
@@ -332,6 +346,36 @@ export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
       return aNeedsAttention ? -1 : 1;
     }
     return getPrPriorityValue(a.prStatus) - getPrPriorityValue(b.prStatus);
+  });
+}
+
+export async function fetchAllLocalWorktreeInfo(): Promise<LocalWorktreeInfo[]> {
+  if (!(await exists(WORKTREES_DIR))) {
+    return [];
+  }
+
+  const entries = await readdir(WORKTREES_DIR);
+  const results = await Promise.all(entries.map(fetchLocalWorktreeInfo));
+  return results.filter((wt): wt is LocalWorktreeInfo => wt !== null);
+}
+
+export async function fetchAllRemoteWorktreeInfo(names: string[]): Promise<Map<string, RemoteWorktreeInfo>> {
+  const results = await Promise.all(
+    names.map(async (name) => {
+      const remote = await fetchRemoteWorktreeInfo(name);
+      return [name, remote] as const;
+    })
+  );
+  return new Map(results);
+}
+
+export function mergeWorktreeData(
+  local: LocalWorktreeInfo[],
+  remote: Map<string, RemoteWorktreeInfo>
+): WorktreeInfo[] {
+  return local.map((l) => {
+    const r = remote.get(l.name) ?? { prStatus: "none" as const, prUrl: null };
+    return { ...l, ...r };
   });
 }
 
