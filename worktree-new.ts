@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { access, constants } from "node:fs/promises";
 import { execAsync, isMain } from "./utils.js";
 
 export const WORKTREES_DIR = join(homedir(), "worktrees");
@@ -12,6 +13,8 @@ interface WorktreeConfig {
 export const WORKTREE_CONFIGS: Record<string, WorktreeConfig> = {
   sage: { workingDir: "sage/sage-backend" },
   store: { workingDir: "customers/store" },
+  migrations: { workingDir: "tools/migrations" },
+  github: { workingDir: ".github" },
 };
 
 async function run(command: string, cwd: string): Promise<string> {
@@ -74,7 +77,7 @@ async function main() {
 
   if (args.length < 2) {
     console.error("Usage: npm run worktree-new <base> <description>");
-    console.error("  base: sage, store");
+    console.error(`  base: ${Object.keys(WORKTREE_CONFIGS).join(", ")}`);
     console.error("  description: kebab-case description for the branch");
     console.error("");
     console.error("Example: npm run worktree-new sage test-create-recipe-tool");
@@ -90,8 +93,15 @@ async function main() {
 
   const result = await createWorktree(base, description);
 
-  console.log(`Running script/setup in ${WORKTREE_CONFIGS[base].workingDir}...`);
-  await runSetup(result.workingDir);
+  // Check if script/setup exists before running it
+  const setupPath = join(result.workingDir, "script", "setup");
+  try {
+    await access(setupPath, constants.X_OK);
+    console.log(`Running script/setup in ${WORKTREE_CONFIGS[base].workingDir}...`);
+    await runSetup(result.workingDir);
+  } catch {
+    console.log(`No script/setup found, skipping setup step.`);
+  }
 
   console.log(`Opening Cursor at ${result.workingDir}...`);
   await run(`cursor "${result.workingDir}"`, result.workingDir);

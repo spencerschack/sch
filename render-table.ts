@@ -3,8 +3,8 @@ import type { AgentStatusResult, GitStatusResult, PrStatus, WorktreeInfo } from 
 
 export function formatAgentStatus(agent: AgentStatusResult): string {
   if (agent.status === "none") return "-";
+  if (agent.status === "active") return "active";
   const formatted = prettyMs(agent.age * 1000, { compact: true });
-  if (agent.status === "active") return `active ${formatted}`;
   return `idle ${formatted}`;
 }
 
@@ -13,7 +13,13 @@ export function formatGitStatus(git: GitStatusResult): string {
 }
 
 export function isBusyStatus(status: PrStatus): boolean {
-  return status === "frozen" || status === "running" || status === "queued" || status === "waiting";
+  return status === "loading" || status === "frozen" || status === "running" || status === "queued" || status === "waiting";
+}
+
+export function needsAttention(wt: WorktreeInfo): boolean {
+  if (wt.paused || wt.blocked) return false;
+  if (wt.git.status === "changed") return true;
+  return wt.agent.status !== "active" && !isBusyStatus(wt.prStatus);
 }
 
 export function renderWorktreeTable(worktrees: WorktreeInfo[]): void {
@@ -21,12 +27,11 @@ export function renderWorktreeTable(worktrees: WorktreeInfo[]): void {
   console.log("| --- | --- | --- | --- | --- | --- |");
 
   for (const wt of worktrees) {
-    const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused && !wt.blocked;
-    const attention = wt.paused ? "P" : needsAttention ? "!" : "";
+    const attention = needsAttention(wt) ? "!" : "";
     const namePrefix = wt.blocked ? "└─ " : "";
     const nameLink = `[${namePrefix}${wt.name}](${wt.cursorUrl})`;
     const agentDisplay = formatAgentStatus(wt.agent);
-    const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus;
+    const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
     const prStatusDisplay = wt.prUrl ? `[${prLabel}](${wt.prUrl})` : prLabel;
     const qaDisplay = wt.qaStatus === "none" ? "-" : wt.qaStatus;
     console.log(`| ${attention} | ${nameLink} | ${agentDisplay} | ${formatGitStatus(wt.git)} | ${qaDisplay} | ${prStatusDisplay} |`);

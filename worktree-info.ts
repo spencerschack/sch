@@ -1,5 +1,5 @@
 export type GitStatus = "clean" | "changed";
-export type QaStatus = "done" | "stale" | "none";
+export type QaStatus = "testing" | "done" | "stale" | "none";
 
 export interface GitStatusResult {
   status: GitStatus;
@@ -14,6 +14,7 @@ export interface AgentStatusResult {
 }
 
 export type PrStatus =
+  | "loading"
   | "none"
   | "approved"
   | "assign"
@@ -33,7 +34,7 @@ export interface LocalWorktreeInfo {
   git: GitStatusResult;
   paused: boolean;
   blocked: boolean;
-  dependsOn: string | null;
+  dependsOn: string[];
   qaStatus: QaStatus;
 }
 

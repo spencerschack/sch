@@ -10,7 +10,7 @@ export const CONFIG_PATH = join(WORKTREES_DIR, ".worktree-config");
 export interface WorktreeConfig {
   paused?: boolean;
   qaCommit?: string;
-  dependsOn?: string;
+  dependsOn?: string[];
 }
 
 export interface AllWorktreeConfigs {
@@ -101,10 +101,20 @@ async function main() {
         console.error("Usage: npm run worktree-config <worktree-name> depends <dependency-name>");
         process.exit(1);
       }
-      config.dependsOn = dependencyName;
+      config.dependsOn = config.dependsOn ?? [];
+      if (!config.dependsOn.includes(dependencyName)) {
+        config.dependsOn.push(dependencyName);
+      }
       break;
     case "undepends":
-      delete config.dependsOn;
+      if (dependencyName) {
+        config.dependsOn = (config.dependsOn ?? []).filter((d) => d !== dependencyName);
+        if (config.dependsOn.length === 0) {
+          delete config.dependsOn;
+        }
+      } else {
+        delete config.dependsOn;
+      }
       break;
   }
 
@@ -115,10 +125,14 @@ async function main() {
       console.log(`${worktreeName}: QA recorded at ${config.qaCommit?.slice(0, 7)}`);
       break;
     case "depends":
-      console.log(`${worktreeName}: now depends on ${dependencyName}`);
+      console.log(`${worktreeName}: now depends on ${config.dependsOn?.join(", ")}`);
       break;
     case "undepends":
-      console.log(`${worktreeName}: dependency removed`);
+      if (dependencyName) {
+        console.log(`${worktreeName}: removed dependency on ${dependencyName}`);
+      } else {
+        console.log(`${worktreeName}: all dependencies removed`);
+      }
       break;
     default:
       console.log(`${worktreeName}: ${action}d`);

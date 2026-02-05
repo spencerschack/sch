@@ -6,7 +6,7 @@ import Spinner from "ink-spinner";
 import prettyMs from "pretty-ms";
 import { fetchAllLocalWorktreeInfo, fetchAllRemoteWorktreeInfo, mergeWorktreeData, sortWorktrees, openUrl } from "./worktree-status.js";
 import { writeWorktreeConfig, readWorktreeConfig, WORKTREES_DIR } from "./worktree-config.js";
-import { formatAgentStatus, formatGitStatus, isBusyStatus } from "./render-table.js";
+import { formatAgentStatus, formatGitStatus, isBusyStatus, needsAttention } from "./render-table.js";
 import { createWorktree, WORKTREE_CONFIGS } from "./worktree-new.js";
 import { removeWorktreeFull } from "./worktree-remove.js";
 import type { WorktreeInfo, PrStatus, LocalWorktreeInfo, RemoteWorktreeInfo } from "./worktree-info.js";
@@ -96,6 +96,8 @@ function getAgentColor(status: string): string | undefined {
 
 function getQaColor(status: string): string | undefined {
   switch (status) {
+    case "testing":
+      return "cyan";
     case "done":
       return "green";
     case "stale":
@@ -114,14 +116,14 @@ interface ColumnWidths {
 }
 
 function getRowData(wt: WorktreeInfo) {
-  const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused && !wt.blocked;
-  const attention = wt.paused ? "P" : needsAttention ? "!" : " ";
+  const wtNeedsAttention = needsAttention(wt);
+  const attention = wtNeedsAttention ? "!" : " ";
   const namePrefix = wt.blocked ? "└─ " : "";
   const agent = formatAgentStatus(wt.agent);
   const git = formatGitStatus(wt.git);
-  const pr = wt.prStatus === "none" ? "-" : wt.prStatus;
+  const pr = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
   const qa = wt.qaStatus === "none" ? "-" : wt.qaStatus;
-  return { attention, name: wt.name, namePrefix, agent, git, qa, pr, needsAttention };
+  return { attention, name: wt.name, namePrefix, agent, git, qa, pr, needsAttention: wtNeedsAttention };
 }
 
 function computeColumnWidths(data: WorktreeInfo[]): ColumnWidths {
@@ -171,6 +173,10 @@ function getHighlightColumn(wt: WorktreeInfo): HighlightColumn {
   // Priority 6: Agent is active
   if (wt.agent.status === "active") {
     return "agent";
+  }
+  // Priority 7: QA is in testing
+  if (wt.qaStatus === "testing") {
+    return "qa";
   }
   return null;
 }
@@ -269,15 +275,17 @@ interface FooterProps {
   message: string | null;
   focused: boolean;
   showDelete: boolean;
+  showAssign: boolean;
 }
 
-function Footer({ refreshing, message, focused, showDelete }: FooterProps) {
+function Footer({ refreshing, message, focused, showDelete, showAssign }: FooterProps) {
   return (
     <Box flexDirection="column">
       <Text dimColor>
         <Text color="cyan">↵</Text>{" Cursor   "}
         <Text color="cyan">⇥</Text>{" PR   "}
         {showDelete && <><Text color="cyan">⌫</Text>{" Delete   "}</>}
+        {showAssign && <><Text color="cyan">A</Text>{"ssign   "}</>}
         <Text color="cyan">P</Text>{"ause   "}
         <Text color="cyan">D</Text>{"ep   "}
         <Text color="cyan">Q</Text>{"A   "}
@@ -394,6 +402,7 @@ function WorktreeApp() {
   const selectedWorktree = data[selected];
 
   const showDelete = selectedWorktree?.prStatus === "merged";
+  const showAssign = selectedWorktree?.prStatus === "assign";
 
   const handleOpen = useCallback(async () => {
     if (!selectedWorktree) return;
@@ -405,6 +414,12 @@ function WorktreeApp() {
     if (!selectedWorktree?.prUrl) return;
     await openUrl(selectedWorktree.prUrl);
     setMessage(`Opened PR: ${selectedWorktree.name}`);
+  }, [selectedWorktree]);
+
+  const handleAssign = useCallback(async () => {
+    if (!selectedWorktree?.prUrl || selectedWorktree.prStatus !== "assign") return;
+    await openUrl(selectedWorktree.prUrl);
+    setMessage(`Opened assign: ${selectedWorktree.name}`);
   }, [selectedWorktree]);
 
   const handleDelete = useCallback(async () => {
@@ -445,6 +460,8 @@ function WorktreeApp() {
       if (worktreeCommit !== bentoCommit) {
         setMessage(`Checking out in bento...`);
         await checkoutCommitInBento(worktreeCommit);
+        await refreshLocal();
+        return;
       }
 
       const config = await readWorktreeConfig(selectedWorktree.name);
@@ -460,36 +477,43 @@ function WorktreeApp() {
 
   const handleDependency = useCallback(async () => {
     if (!selectedWorktree) return;
-
-    // If has dependency, clear it
-    if (selectedWorktree.dependsOn) {
-      const config = await readWorktreeConfig(selectedWorktree.name);
-      delete config.dependsOn;
-      await writeWorktreeConfig(selectedWorktree.name, config);
-      setMessage(`${selectedWorktree.name}: dependency removed`);
-      await refreshLocal();
-      return;
-    }
-
-    // Otherwise, enter selection mode
+    // Enter selection mode to toggle dependencies
     setInputMode("selectDependency");
-  }, [selectedWorktree, refreshLocal]);
+  }, [selectedWorktree]);
 
   const handleDependencySelect = useCallback(async (item: { label: string; value: string }) => {
     if (!selectedWorktree) return;
     setInputMode("normal");
 
     const config = await readWorktreeConfig(selectedWorktree.name);
-    config.dependsOn = item.value;
+    const deps = config.dependsOn ?? [];
+    
+    if (deps.includes(item.value)) {
+      // Remove if already present
+      config.dependsOn = deps.filter((d) => d !== item.value);
+      if (config.dependsOn.length === 0) {
+        delete config.dependsOn;
+      }
+      setMessage(`${selectedWorktree.name}: removed dep ${item.value}`);
+    } else {
+      // Add if not present
+      config.dependsOn = [...deps, item.value];
+      setMessage(`${selectedWorktree.name}: added dep ${item.value}`);
+    }
+    
     await writeWorktreeConfig(selectedWorktree.name, config);
-    setMessage(`${selectedWorktree.name}: now depends on ${item.value}`);
     await refreshLocal();
   }, [selectedWorktree, refreshLocal]);
 
   // Options for dependency selection (all worktrees except the current one)
+  // Show checkmark for already-selected dependencies
+  const currentDeps = selectedWorktree?.dependsOn ?? [];
   const dependencyOptions = data
     .filter((wt) => wt.name !== selectedWorktree?.name)
-    .map((wt) => ({ label: wt.name, value: wt.name }));
+    .map((wt) => {
+      const isSelected = currentDeps.includes(wt.name);
+      return { label: `${isSelected ? "✓ " : "  "}${wt.name}`, value: wt.name };
+    });
 
   const baseOptions = Object.keys(WORKTREE_CONFIGS).map((key) => ({
     label: key,
@@ -558,6 +582,9 @@ function WorktreeApp() {
     }
     if (key.delete) {
       handleDelete();
+    }
+    if (input === "a") {
+      handleAssign();
     }
     if (input === "p") {
       handlePause();
@@ -640,7 +667,7 @@ function WorktreeApp() {
       );
     }
 
-    return <Footer refreshing={loading} message={message} focused={focused} showDelete={showDelete} />;
+    return <Footer refreshing={loading} message={message} focused={focused} showDelete={showDelete} showAssign={showAssign} />;
   };
 
   return (
@@ -648,7 +675,7 @@ function WorktreeApp() {
       <Box flexDirection="column">
         <TableHeader widths={widths} lastRemoteRefresh={lastRemoteRefresh} />
         {data.map((wt, i) => (
-          <WorktreeRow key={wt.name} wt={wt} selected={i === selected} widths={widths} />
+          <WorktreeRow key={`${wt.name}-${i}`} wt={wt} selected={i === selected} widths={widths} />
         ))}
       </Box>
       {renderFooterOrInput()}

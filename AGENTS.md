@@ -86,6 +86,22 @@ Ongoing work:
 
 The preferred working directory is `customers/store`. Features that involve the frontend should be based off this worktree.
 
+### @migrations
+
+The preferred working directory is `tools/migrations`. Features that involve database migrations should be based off this worktree. Note: There is no `script/setup` for this worktree.
+
+### @github
+
+The preferred working directory is `.github`. Features that involve GitHub Actions workflows, CODEOWNERS, or other GitHub configuration should be based off this worktree. Note: There is no `script/setup` for this worktree.
+
+### Adding New Special Worktrees
+
+When creating a new special `@` worktree:
+
+1. Create the worktree from `~/carrot` with sparse checkout configured appropriately
+2. Add a config entry to `WORKTREE_CONFIGS` in `worktree-new.ts` with the `workingDir`
+3. Document the worktree in this file under the Worktrees section
+
 # Aliases
 
 ## acp
