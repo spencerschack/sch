@@ -1,0 +1,8 @@
+{
+  "packages": [
+    {
+      "source": "git:github.com/aliou/pi-extensions",
+      "extensions": ["extensions/processes"]
+    }
+  ]
+}

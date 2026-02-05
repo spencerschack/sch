@@ -4,7 +4,7 @@ import { removeWorktreeConfig, WORKTREES_DIR } from "./worktree-config.js";
 import { closeWindow } from "./window-management.js";
 import { execAsync, exists, isMain } from "./utils.js";
 
-async function removeWorktree(worktreeName: string): Promise<void> {
+export async function removeWorktree(worktreeName: string, force = false): Promise<void> {
   const worktreePath = join(WORKTREES_DIR, worktreeName);
   const carrotPath = join(homedir(), "carrot");
 
@@ -14,16 +14,21 @@ async function removeWorktree(worktreeName: string): Promise<void> {
   }
 
   try {
-    await execAsync(`git worktree remove "${worktreePath}"`, { cwd: carrotPath });
-    console.log(`Removed worktree: ${worktreeName}`);
+    const forceFlag = force ? " --force" : "";
+    await execAsync(`git worktree remove${forceFlag} "${worktreePath}"`, { cwd: carrotPath });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("contains modified or untracked files")) {
-      console.error(`Worktree has uncommitted changes. Use --force to remove anyway.`);
-      throw error;
+      throw new Error("Worktree has uncommitted changes");
     }
     throw error;
   }
+}
+
+export async function removeWorktreeFull(worktreeName: string, force = false): Promise<void> {
+  await closeWindow(worktreeName);
+  await removeWorktree(worktreeName, force);
+  await removeWorktreeConfig(worktreeName);
 }
 
 async function main() {

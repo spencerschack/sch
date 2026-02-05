@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"c4dc4415-156d-4ddc-bc85-c01657a947bf","timestamp":"2026-02-04T19:02:50.063Z","cwd":"/Users/spencerschack/sch"}
+{"type":"model_change","id":"0a02d74d","parentId":null,"timestamp":"2026-02-04T19:02:50.064Z","provider":"instacart","modelId":"claude-opus-4.5"}
+{"type":"thinking_level_change","id":"dca831d8","parentId":"0a02d74d","timestamp":"2026-02-04T19:02:50.064Z","thinkingLevel":"medium"}
+{"type":"message","id":"9bd60f74","parentId":"dca831d8","timestamp":"2026-02-04T19:02:50.892Z","message":{"role":"user","content":[{"type":"text","text":"hi"}],"timestamp":1770231770890}}
+{"type":"message","id":"0a16d27d","parentId":"9bd60f74","timestamp":"2026-02-04T19:02:51.436Z","message":{"role":"assistant","content":[],"api":"openai-completions","provider":"instacart","model":"claude-opus-4.5","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"error","timestamp":1770231770891,"errorMessage":"400 Error from bedrock (via Braintrust): Bad Request: Error: Unsupported Bedrock role developer"}}

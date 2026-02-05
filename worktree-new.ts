@@ -3,13 +3,13 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { execAsync, isMain } from "./utils.js";
 
-const WORKTREES_DIR = join(homedir(), "worktrees");
+export const WORKTREES_DIR = join(homedir(), "worktrees");
 
 interface WorktreeConfig {
   workingDir: string;
 }
 
-const WORKTREE_CONFIGS: Record<string, WorktreeConfig> = {
+export const WORKTREE_CONFIGS: Record<string, WorktreeConfig> = {
   sage: { workingDir: "sage/sage-backend" },
   store: { workingDir: "customers/store" },
 };
@@ -34,6 +34,41 @@ async function runSetup(cwd: string): Promise<void> {
   });
 }
 
+export interface CreateWorktreeResult {
+  worktreeName: string;
+  branchName: string;
+  workingDir: string;
+}
+
+/**
+ * Creates a new worktree without running setup or opening Cursor.
+ * Used by the TUI to create worktrees programmatically.
+ */
+export async function createWorktree(base: string, description: string): Promise<CreateWorktreeResult> {
+  const config = WORKTREE_CONFIGS[base];
+  if (!config) {
+    throw new Error(`Unknown base worktree: ${base}. Available: ${Object.keys(WORKTREE_CONFIGS).join(", ")}`);
+  }
+
+  const baseWorktree = join(WORKTREES_DIR, `@${base}`);
+  const githubUsername = process.env.GITHUB_USERNAME;
+
+  if (!githubUsername) {
+    throw new Error("GITHUB_USERNAME environment variable is not set");
+  }
+
+  const branchName = `${githubUsername}/${base}-${description}`;
+  const worktreeName = `${base}-${description}`;
+  const worktreePath = join(WORKTREES_DIR, worktreeName);
+  const workingDir = join(worktreePath, config.workingDir);
+
+  await run("git fetch origin master", baseWorktree);
+  await run("git rebase origin/master", baseWorktree);
+  await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
+
+  return { worktreeName, branchName, workingDir };
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -49,43 +84,20 @@ async function main() {
   const [base, ...descParts] = args;
   const description = descParts.join("-");
 
-  const config = WORKTREE_CONFIGS[base];
-  if (!config) {
-    console.error(`Unknown base worktree: ${base}`);
-    console.error(`Available: ${Object.keys(WORKTREE_CONFIGS).join(", ")}`);
-    process.exit(1);
-  }
-
-  const baseWorktree = join(WORKTREES_DIR, `@${base}`);
-  const githubUsername = process.env.GITHUB_USERNAME;
-
-  if (!githubUsername) {
-    console.error("GITHUB_USERNAME environment variable is not set");
-    process.exit(1);
-  }
-
-  const branchName = `${githubUsername}/${base}-${description}`;
-  const worktreeName = `${base}-${description}`;
-  const worktreePath = join(WORKTREES_DIR, worktreeName);
-  const workingDir = join(worktreePath, config.workingDir);
-
   console.log(`Fetching latest master...`);
-  await run("git fetch origin master", baseWorktree);
-
   console.log(`Rebasing @${base} onto origin/master...`);
-  await run("git rebase origin/master", baseWorktree);
+  console.log(`Creating worktree...`);
 
-  console.log(`Creating worktree: ${worktreeName}`);
-  await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
+  const result = await createWorktree(base, description);
 
-  console.log(`Running script/setup in ${config.workingDir}...`);
-  await runSetup(workingDir);
+  console.log(`Running script/setup in ${WORKTREE_CONFIGS[base].workingDir}...`);
+  await runSetup(result.workingDir);
 
-  console.log(`Opening Cursor at ${workingDir}...`);
-  await run(`cursor "${workingDir}"`, workingDir);
+  console.log(`Opening Cursor at ${result.workingDir}...`);
+  await run(`cursor "${result.workingDir}"`, result.workingDir);
 
-  console.log(`\nWorktree ready: ${worktreeName}`);
-  console.log(`Branch: ${branchName}`);
+  console.log(`\nWorktree ready: ${result.worktreeName}`);
+  console.log(`Branch: ${result.branchName}`);
 }
 
 if (isMain(import.meta.url)) {

@@ -1,0 +1,6 @@
+{
+  "lastChangelogVersion": "0.51.6",
+  "defaultProvider": "instacart",
+  "defaultModel": "claude-opus-4",
+  "showHardwareCursor": false
+}

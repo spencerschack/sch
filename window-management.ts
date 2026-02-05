@@ -83,10 +83,6 @@ end tell`;
 
 export async function closeWindow(pattern: string): Promise<string[]> {
   const script = `
-tell application "Cursor"
-    activate
-end tell
-
 tell application "System Events"
     tell process "Cursor"
         set closed to {}
@@ -94,10 +90,10 @@ tell application "System Events"
             set w to window i
             if name of w contains "${pattern}" then
                 set wName to name of w
-                perform action "AXRaise" of w
-                delay 0.2
-                keystroke "w" using {command down, shift down}
-                delay 0.3
+                try
+                    click button 1 of w
+                    delay 0.1
+                end try
                 set end of closed to wName
             end if
         end repeat

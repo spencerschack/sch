@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"8a93ffc2-16cd-402c-a3a7-c918c9572a16","timestamp":"2026-02-04T16:47:33.343Z","cwd":"/Users/spencerschack/sch"}
+{"type":"model_change","id":"ecb8e1f7","parentId":null,"timestamp":"2026-02-04T16:47:33.344Z","provider":"anthropic","modelId":"claude-opus-4-5"}
+{"type":"thinking_level_change","id":"028aadd8","parentId":"ecb8e1f7","timestamp":"2026-02-04T16:47:33.344Z","thinkingLevel":"medium"}
+{"type":"message","id":"3fde773d","parentId":"028aadd8","timestamp":"2026-02-04T16:47:34.433Z","message":{"role":"user","content":[{"type":"text","text":"hello"}],"timestamp":1770223654431}}
+{"type":"message","id":"b328f6bb","parentId":"3fde773d","timestamp":"2026-02-04T16:47:34.726Z","message":{"role":"assistant","content":[],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-4-5","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"error","timestamp":1770223654432,"errorMessage":"400 Invalid vendor, got: \"bedrock\", valid vendors: \"openai\", \"azure\". Note: Bedrock uses specific routes."}}

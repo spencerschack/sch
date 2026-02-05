@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { render, Box, Text, useInput, useApp } from "ink";
+import TextInput from "ink-text-input";
+import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
+import prettyMs from "pretty-ms";
 import { fetchWorktrees, openUrl } from "./worktree-status.js";
 import { writeWorktreeConfig, readWorktreeConfig } from "./worktree-config.js";
 import { formatAgentStatus, formatGitStatus, isBusyStatus } from "./render-table.js";
+import { createWorktree, WORKTREE_CONFIGS } from "./worktree-new.js";
+import { removeWorktreeFull } from "./worktree-remove.js";
 import type { WorktreeInfo, PrStatus } from "./worktree-info.js";
 import { execAsync } from "./utils.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
+type InputMode = "normal" | "inputBase" | "inputDescription";
 
 const BENTO_DIR = join(homedir(), "carrot");
 const REFRESH_INTERVAL = 60000; // 1 minute
@@ -134,6 +141,7 @@ interface WorktreeRowProps {
 function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
   const row = getRowData(wt);
   const bgColor = selected ? "whiteBright" : undefined;
+  const dimmed = wt.paused;
 
   // Pad each cell to fill its column width, plus 2 for gap
   const gap = "  ";
@@ -146,28 +154,28 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
 
   return (
     <Box>
-      <Text backgroundColor={bgColor}>
-        <Text color={row.needsAttention ? "red" : wt.paused ? "gray" : undefined}>
+      <Text backgroundColor={bgColor} dimColor={dimmed}>
+        <Text color={row.needsAttention ? "red" : dimmed ? undefined : undefined}>
           {attentionPad}
         </Text>
         {gap}
-        <Text color="blue" bold={selected}>
+        <Text color={dimmed ? undefined : "blue"} bold={selected}>
           {namePad}
         </Text>
         {gap}
-        <Text color={getAgentColor(wt.agent.status)}>
+        <Text color={dimmed ? undefined : getAgentColor(wt.agent.status)}>
           {agentPad}
         </Text>
         {gap}
-        <Text color={wt.git.status === "changed" ? "yellow" : undefined}>
+        <Text color={dimmed ? undefined : (wt.git.status === "changed" ? "yellow" : undefined)}>
           {gitPad}
         </Text>
         {gap}
-        <Text color={getQaColor(wt.qaStatus)}>
+        <Text color={dimmed ? undefined : getQaColor(wt.qaStatus)}>
           {qaPad}
         </Text>
         {gap}
-        <Text color={getStatusColor(wt.prStatus)}>
+        <Text color={dimmed ? undefined : getStatusColor(wt.prStatus)}>
           {prPad}
         </Text>
       </Text>
@@ -205,26 +213,37 @@ interface FooterProps {
   lastRefresh: Date | null;
   message: string | null;
   focused: boolean;
+  openAction: string;
 }
 
-function Footer({ refreshing, lastRefresh, message, focused }: FooterProps) {
-  const time = lastRefresh?.toLocaleTimeString() ?? "never";
+function Footer({ refreshing, lastRefresh, message, focused, openAction }: FooterProps) {
+  // Tick every second to update the time ago display
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const timeAgo = lastRefresh 
+    ? prettyMs(Date.now() - lastRefresh.getTime(), { compact: true }) + " ago"
+    : "never";
   return (
     <Box justifyContent="space-between">
       <Text dimColor>
-        <Text color="cyan">o</Text>{" Open   "}
-        <Text color="cyan">p</Text>{" Pause   "}
-        <Text color="cyan">q</Text>{" QA   "}
-        <Text color="cyan">r</Text>{" Refresh"}
+        <Text color="cyan">P</Text>{"ause   "}
+        <Text color="cyan">Q</Text>{"A   "}
+        <Text color="cyan">R</Text>{"efresh   "}
+        <Text color="cyan">N</Text>{"ew   "}
+        <Text color="cyan">↵</Text>{` ${openAction}`}
       </Text>
       {message ? (
         <Text color="green">{message}</Text>
       ) : refreshing ? (
         <Text color="cyan">Refreshing...</Text>
       ) : !focused ? (
-        <Text color="yellow">Paused (unfocused) · {time}</Text>
+        <Text color="yellow">Paused (unfocused) · {timeAgo}</Text>
       ) : (
-        <Text dimColor>Updated: {time}</Text>
+        <Text dimColor>Updated {timeAgo}</Text>
       )}
     </Box>
   );
@@ -277,6 +296,12 @@ function WorktreeApp() {
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Input mode for creating new worktrees
+  const [inputMode, setInputMode] = useState<InputMode>("normal");
+  const [newWorktreeBase, setNewWorktreeBase] = useState("");
+  const [newWorktreeDesc, setNewWorktreeDesc] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
   // Clear message after 2 seconds
   useEffect(() => {
     if (message) {
@@ -294,12 +319,32 @@ function WorktreeApp() {
 
   const selectedWorktree = data[selected];
 
+  const openAction = selectedWorktree?.prStatus === "merged"
+    ? "Remove"
+    : selectedWorktree?.prUrl
+      ? "Open PR"
+      : "Open Cursor";
+
   const handleOpen = useCallback(async () => {
     if (!selectedWorktree) return;
+    
+    if (selectedWorktree.prStatus === "merged") {
+      setMessage(`Removing ${selectedWorktree.name}...`);
+      try {
+        await removeWorktreeFull(selectedWorktree.name);
+        setMessage(`Removed: ${selectedWorktree.name}`);
+        await refresh();
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        setMessage(`Failed to remove: ${msg}`);
+      }
+      return;
+    }
+    
     const url = selectedWorktree.prUrl ?? selectedWorktree.cursorUrl;
     await openUrl(url);
     setMessage(`Opened: ${selectedWorktree.name}`);
-  }, [selectedWorktree]);
+  }, [selectedWorktree, refresh]);
 
   const handlePause = useCallback(async () => {
     if (!selectedWorktree) return;
@@ -319,14 +364,66 @@ function WorktreeApp() {
     await refresh();
   }, [selectedWorktree, refresh]);
 
+  const baseOptions = Object.keys(WORKTREE_CONFIGS).map((key) => ({
+    label: key,
+    value: key,
+  }));
+
+  const handleBaseSelect = useCallback((item: { label: string; value: string }) => {
+    setNewWorktreeBase(item.value);
+    setNewWorktreeDesc("");
+    setInputMode("inputDescription");
+  }, []);
+
+  const handleDescriptionSubmit = useCallback(async (value: string) => {
+    const desc = value.trim().replace(/\s+/g, "-").toLowerCase();
+    if (!desc) {
+      setMessage("Description cannot be empty");
+      setInputMode("normal");
+      return;
+    }
+
+    setIsCreating(true);
+    setInputMode("normal");
+
+    try {
+      const result = await createWorktree(newWorktreeBase, desc);
+      setMessage(`Created: ${result.worktreeName}`);
+      await refresh();
+    } catch (err) {
+      setMessage(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsCreating(false);
+    }
+  }, [newWorktreeBase, refresh]);
+
+  const handleInputCancel = useCallback(() => {
+    setInputMode("normal");
+    setNewWorktreeBase("");
+    setNewWorktreeDesc("");
+  }, []);
+
   useInput((input, key) => {
+    // Handle escape for canceling input or exiting
+    if (key.escape) {
+      if (inputMode !== "normal") {
+        handleInputCancel();
+      } else {
+        exit();
+      }
+      return;
+    }
+
+    // Only handle navigation/actions in normal mode
+    if (inputMode !== "normal") return;
+
     if (key.upArrow || input === "k") {
       setSelected((i) => Math.max(0, i - 1));
     }
     if (key.downArrow || input === "j") {
       setSelected((i) => Math.min(data.length - 1, i + 1));
     }
-    if (input === "o" || key.return) {
+    if (key.return) {
       handleOpen();
     }
     if (input === "p") {
@@ -338,8 +435,10 @@ function WorktreeApp() {
     if (input === "r") {
       refresh();
     }
-    if (key.escape) {
-      exit();
+    if (input === "n") {
+      setInputMode("inputBase");
+      setNewWorktreeBase("");
+      setNewWorktreeDesc("");
     }
   });
 
@@ -363,6 +462,42 @@ function WorktreeApp() {
     );
   }
 
+  // Render input prompts or footer based on mode
+  const renderFooterOrInput = () => {
+    if (isCreating) {
+      return (
+        <Box>
+          <Text color="cyan"><Spinner type="dots" /></Text>
+          <Text> Creating worktree...</Text>
+        </Box>
+      );
+    }
+
+    if (inputMode === "inputBase") {
+      return (
+        <Box>
+          <Text>Base: </Text>
+          <SelectInput items={baseOptions} onSelect={handleBaseSelect} />
+        </Box>
+      );
+    }
+
+    if (inputMode === "inputDescription") {
+      return (
+        <Box>
+          <Text>Description for {newWorktreeBase}: </Text>
+          <TextInput
+            value={newWorktreeDesc}
+            onChange={setNewWorktreeDesc}
+            onSubmit={handleDescriptionSubmit}
+          />
+        </Box>
+      );
+    }
+
+    return <Footer refreshing={loading} lastRefresh={lastRefresh} message={message} focused={focused} openAction={openAction} />;
+  };
+
   return (
     <Box flexDirection="column">
       <Box flexDirection="column">
@@ -371,7 +506,7 @@ function WorktreeApp() {
           <WorktreeRow key={wt.name} wt={wt} selected={i === selected} widths={widths} />
         ))}
       </Box>
-      <Footer refreshing={loading} lastRefresh={lastRefresh} message={message} focused={focused} />
+      {renderFooterOrInput()}
     </Box>
   );
 }
