@@ -4,7 +4,8 @@ import { homedir } from "node:os";
 import { WORKTREES_DIR, readWorktreeConfig, WorktreeConfig } from "./worktree-config.js";
 import { WORKTREE_CONFIGS } from "./worktree-new.js";
 import { execAsync, exists, isMain } from "./utils.js";
-import type { AgentStatusResult, GitStatusResult, LocalWorktreeInfo, PrStatus, QaStatus, RemoteWorktreeInfo, WorktreeInfo } from "./worktree-info.js";
+import type { AgentStatusResult, GitStatusResult, LocalWorktreeInfo, PrStatus, QaStatus, RemoteWorktreeInfo, WorktreeInfo, DisplayRow } from "./worktree-info.js";
+import { isDependencyRef } from "./worktree-info.js";
 import { needsAttention, renderWorktreeTable } from "./render-table.js";
 
 const CURSOR_PROJECTS_DIR = join(homedir(), ".cursor", "projects");
@@ -251,6 +252,11 @@ function computePrStatus(pr: GraphQLPrData): PrStatusResult {
   const checks = pr.statusCheckRollup?.contexts?.nodes ?? [];
   const ciResult = analyzeCiStatus(checks);
 
+  // Check merge queue first - if in queue, show "queued" regardless of CI status
+  if (pr.mergeQueueEntry) {
+    return { status: "queued", url: prUrl };
+  }
+
   if (ciResult.status === "expired") return { status: "expired", url: prUrl };
   if (ciResult.status === "fail") return { status: "failed", url: prUrl };
   if (ciResult.status === "frozen") {
@@ -258,10 +264,6 @@ function computePrStatus(pr: GraphQLPrData): PrStatusResult {
     return { status: "frozen", url: freezeUrl };
   }
   if (ciResult.status === "running") return { status: "running", url: prUrl };
-
-  if (pr.mergeQueueEntry) {
-    return { status: "queued", url: prUrl };
-  }
 
   if (pr.reviewDecision === "APPROVED") return { status: "approved", url: prUrl };
 
@@ -353,15 +355,20 @@ function getPrPriorityValue(status: PrStatus): number {
   return getPrPriority(status);
 }
 
-export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
-  // First, separate blocked and non-blocked worktrees
-  const nonBlocked = worktrees.filter((wt) => !wt.blocked);
-  const blocked = worktrees.filter((wt) => wt.blocked);
+function getStatusPriority(wt: WorktreeInfo): number {
+  // Sort order: active (0) > blocked (1) > paused (2)
+  if (wt.paused) return 2;
+  if (wt.blocked) return 1;
+  return 0;
+}
 
-  // Sort non-blocked worktrees normally
-  const sorted = [...nonBlocked].sort((a, b) => {
-    if (a.paused !== b.paused) {
-      return a.paused ? 1 : -1;
+export function sortWorktrees(worktrees: WorktreeInfo[]): DisplayRow[] {
+  // Sort all worktrees: active > blocked > paused, then by attention/PR status
+  const sorted = [...worktrees].sort((a, b) => {
+    const aPriority = getStatusPriority(a);
+    const bPriority = getStatusPriority(b);
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
     }
     const aNeedsAttention = needsAttention(a);
     const bNeedsAttention = needsAttention(b);
@@ -371,25 +378,18 @@ export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
     return getPrPriorityValue(a.prStatus) - getPrPriorityValue(b.prStatus);
   });
 
-  // Insert blocked worktrees after each of their dependencies
-  // A worktree with multiple dependencies will appear multiple times
-  const result: WorktreeInfo[] = [];
-  const blockedByDep = new Map<string, WorktreeInfo[]>();
-
-  for (const wt of blocked) {
-    for (const dep of wt.dependsOn) {
-      const deps = blockedByDep.get(dep) ?? [];
-      deps.push(wt);
-      blockedByDep.set(dep, deps);
-    }
-  }
+  // Insert dependency refs after worktrees that have dependencies
+  const result: DisplayRow[] = [];
 
   for (const wt of sorted) {
     result.push(wt);
-    // Add any blocked worktrees that depend on this one
-    const deps = blockedByDep.get(wt.name);
-    if (deps) {
-      result.push(...deps);
+    // Add dependency refs for each dependency
+    for (const dep of wt.dependsOn) {
+      result.push({
+        type: "dependency",
+        name: dep,
+        dependentName: wt.name,
+      });
     }
   }
 
@@ -447,7 +447,7 @@ export function mergeWorktreeData(
   });
 }
 
-export async function fetchWorktrees(): Promise<WorktreeInfo[]> {
+export async function fetchWorktrees(): Promise<DisplayRow[]> {
   if (!(await exists(WORKTREES_DIR))) {
     return [];
   }
@@ -481,7 +481,7 @@ async function main() {
   }
 
   if (isNext) {
-    const first = worktrees.find(needsAttention);
+    const first = worktrees.find((row): row is WorktreeInfo => !isDependencyRef(row) && needsAttention(row));
     if (!first) {
       console.log("No worktrees need attention");
       process.exit(0);

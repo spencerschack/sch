@@ -9,7 +9,8 @@ import { writeWorktreeConfig, readWorktreeConfig, WORKTREES_DIR } from "./worktr
 import { formatAgentStatus, formatGitStatus, isBusyStatus, needsAttention } from "./render-table.js";
 import { createWorktree, WORKTREE_CONFIGS } from "./worktree-new.js";
 import { removeWorktreeFull } from "./worktree-remove.js";
-import type { WorktreeInfo, PrStatus, LocalWorktreeInfo, RemoteWorktreeInfo } from "./worktree-info.js";
+import type { WorktreeInfo, PrStatus, LocalWorktreeInfo, RemoteWorktreeInfo, DisplayRow } from "./worktree-info.js";
+import { isDependencyRef } from "./worktree-info.js";
 import { execAsync } from "./utils.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -118,15 +119,14 @@ interface ColumnWidths {
 function getRowData(wt: WorktreeInfo) {
   const wtNeedsAttention = needsAttention(wt);
   const attention = wtNeedsAttention ? "!" : " ";
-  const namePrefix = wt.blocked ? "└─ " : "";
   const agent = formatAgentStatus(wt.agent);
   const git = formatGitStatus(wt.git);
   const pr = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
   const qa = wt.qaStatus === "none" ? "-" : wt.qaStatus;
-  return { attention, name: wt.name, namePrefix, agent, git, qa, pr, needsAttention: wtNeedsAttention };
+  return { attention, name: wt.name, agent, git, qa, pr, needsAttention: wtNeedsAttention };
 }
 
-function computeColumnWidths(data: WorktreeInfo[]): ColumnWidths {
+function computeColumnWidths(data: DisplayRow[]): ColumnWidths {
   const widths: ColumnWidths = {
     name: "Worktree".length,
     agent: "Agent".length,
@@ -135,9 +135,14 @@ function computeColumnWidths(data: WorktreeInfo[]): ColumnWidths {
     pr: "PR".length,
   };
 
-  for (const wt of data) {
-    const row = getRowData(wt);
-    widths.name = Math.max(widths.name, row.namePrefix.length + row.name.length);
+  for (const item of data) {
+    if (isDependencyRef(item)) {
+      // Dependency refs have "└─ " prefix (3 chars)
+      widths.name = Math.max(widths.name, 3 + item.name.length);
+      continue;
+    }
+    const row = getRowData(item);
+    widths.name = Math.max(widths.name, row.name.length);
     widths.agent = Math.max(widths.agent, row.agent.length);
     widths.git = Math.max(widths.git, row.git.length);
     widths.qa = Math.max(widths.qa, row.qa.length);
@@ -196,8 +201,7 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
   // Pad each cell to fill its column width, plus 2 for gap
   const gap = "  ";
   const attentionPad = row.attention;
-  const fullName = row.namePrefix + row.name;
-  const namePad = fullName.padEnd(widths.name);
+  const namePad = row.name.padEnd(widths.name);
   const agentPad = row.agent.padEnd(widths.agent);
   const gitPad = row.git.padEnd(widths.git);
   const qaPad = row.qa.padEnd(widths.qa);
@@ -229,6 +233,29 @@ function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
         <Text color={highlight === "pr" ? getStatusColor(wt.prStatus) : undefined}>
           {prPad}
         </Text>
+      </Text>
+    </Box>
+  );
+}
+
+interface DependencyRowProps {
+  name: string;
+  widths: ColumnWidths;
+}
+
+function DependencyRow({ name, widths }: DependencyRowProps) {
+  const gap = "  ";
+  const fullName = `└─ ${name}`;
+  const namePad = fullName.padEnd(widths.name);
+  const emptyAgent = "".padEnd(widths.agent);
+  const emptyGit = "".padEnd(widths.git);
+  const emptyQa = "".padEnd(widths.qa);
+  const emptyPr = "".padEnd(widths.pr);
+
+  return (
+    <Box>
+      <Text dimColor>
+        {" "}{gap}{namePad}{gap}{emptyAgent}{gap}{emptyGit}{gap}{emptyQa}{gap}{emptyPr}
       </Text>
     </Box>
   );
@@ -276,9 +303,10 @@ interface FooterProps {
   focused: boolean;
   showDelete: boolean;
   showAssign: boolean;
+  showMerge: boolean;
 }
 
-function Footer({ refreshing, message, focused, showDelete, showAssign }: FooterProps) {
+function Footer({ refreshing, message, focused, showDelete, showAssign, showMerge }: FooterProps) {
   return (
     <Box flexDirection="column">
       <Text dimColor>
@@ -286,6 +314,7 @@ function Footer({ refreshing, message, focused, showDelete, showAssign }: Footer
         <Text color="cyan">⇥</Text>{" PR   "}
         {showDelete && <><Text color="cyan">⌫</Text>{" Delete   "}</>}
         {showAssign && <><Text color="cyan">A</Text>{"ssign   "}</>}
+        {showMerge && <><Text color="cyan">M</Text>{"erge   "}</>}
         <Text color="cyan">P</Text>{"ause   "}
         <Text color="cyan">D</Text>{"ep   "}
         <Text color="cyan">Q</Text>{"A   "}
@@ -392,17 +421,42 @@ function WorktreeApp() {
     }
   }, [message]);
 
-  // Keep selection in bounds
-  useEffect(() => {
-    if (data.length > 0 && selected >= data.length) {
-      setSelected(data.length - 1);
+  // Helper to find next selectable index (skipping dependency refs)
+  const findNextSelectable = useCallback((from: number, direction: 1 | -1): number => {
+    let next = from + direction;
+    while (next >= 0 && next < data.length) {
+      if (!isDependencyRef(data[next])) {
+        return next;
+      }
+      next += direction;
     }
-  }, [data.length, selected]);
+    return from; // Stay at current if no selectable found
+  }, [data]);
 
-  const selectedWorktree = data[selected];
+  // Get all selectable indices
+  const selectableIndices = React.useMemo(() => 
+    data.map((row, i) => isDependencyRef(row) ? -1 : i).filter(i => i >= 0),
+    [data]
+  );
+
+  // Keep selection in bounds and on a selectable row
+  useEffect(() => {
+    if (selectableIndices.length === 0) return;
+    if (!selectableIndices.includes(selected)) {
+      // Find the closest selectable index
+      const firstSelectable = selectableIndices[0];
+      setSelected(firstSelectable);
+    } else if (selected >= data.length) {
+      setSelected(selectableIndices[selectableIndices.length - 1]);
+    }
+  }, [data.length, selected, selectableIndices]);
+
+  const selectedRow = data[selected];
+  const selectedWorktree = selectedRow && !isDependencyRef(selectedRow) ? selectedRow : null;
 
   const showDelete = selectedWorktree?.prStatus === "merged";
   const showAssign = selectedWorktree?.prStatus === "assign";
+  const showMerge = selectedWorktree?.prStatus === "approved";
 
   const handleOpen = useCallback(async () => {
     if (!selectedWorktree) return;
@@ -421,6 +475,19 @@ function WorktreeApp() {
     await openUrl(selectedWorktree.prUrl);
     setMessage(`Opened assign: ${selectedWorktree.name}`);
   }, [selectedWorktree]);
+
+  const handleMerge = useCallback(async () => {
+    if (!selectedWorktree?.prUrl || selectedWorktree.prStatus !== "approved") return;
+    setMessage(`Merging ${selectedWorktree.name}...`);
+    try {
+      await execAsync(`gh pr merge "${selectedWorktree.prUrl}"`);
+      setMessage(`Merged: ${selectedWorktree.name}`);
+      await refresh();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setMessage(`Failed to merge: ${msg}`);
+    }
+  }, [selectedWorktree, refresh]);
 
   const handleDelete = useCallback(async () => {
     if (!selectedWorktree) return;
@@ -509,7 +576,7 @@ function WorktreeApp() {
   // Show checkmark for already-selected dependencies
   const currentDeps = selectedWorktree?.dependsOn ?? [];
   const dependencyOptions = data
-    .filter((wt) => wt.name !== selectedWorktree?.name)
+    .filter((row): row is WorktreeInfo => !isDependencyRef(row) && row.name !== selectedWorktree?.name)
     .map((wt) => {
       const isSelected = currentDeps.includes(wt.name);
       return { label: `${isSelected ? "✓ " : "  "}${wt.name}`, value: wt.name };
@@ -569,10 +636,10 @@ function WorktreeApp() {
     if (inputMode !== "normal") return;
 
     if (key.upArrow || input === "k") {
-      setSelected((i) => Math.max(0, i - 1));
+      setSelected((i) => findNextSelectable(i, -1));
     }
     if (key.downArrow || input === "j") {
-      setSelected((i) => Math.min(data.length - 1, i + 1));
+      setSelected((i) => findNextSelectable(i, 1));
     }
     if (key.return) {
       handleOpen();
@@ -585,6 +652,9 @@ function WorktreeApp() {
     }
     if (input === "a") {
       handleAssign();
+    }
+    if (input === "m") {
+      handleMerge();
     }
     if (input === "p") {
       handlePause();
@@ -667,16 +737,19 @@ function WorktreeApp() {
       );
     }
 
-    return <Footer refreshing={loading} message={message} focused={focused} showDelete={showDelete} showAssign={showAssign} />;
+    return <Footer refreshing={loading} message={message} focused={focused} showDelete={showDelete} showAssign={showAssign} showMerge={showMerge} />;
   };
 
   return (
     <Box flexDirection="column">
       <Box flexDirection="column">
         <TableHeader widths={widths} lastRemoteRefresh={lastRemoteRefresh} />
-        {data.map((wt, i) => (
-          <WorktreeRow key={`${wt.name}-${i}`} wt={wt} selected={i === selected} widths={widths} />
-        ))}
+        {data.map((row, i) => {
+          if (isDependencyRef(row)) {
+            return <DependencyRow key={`dep-${row.dependentName}-${row.name}`} name={row.name} widths={widths} />;
+          }
+          return <WorktreeRow key={`${row.name}-${i}`} wt={row} selected={i === selected} widths={widths} />;
+        })}
       </Box>
       {renderFooterOrInput()}
     </Box>

@@ -1,5 +1,6 @@
 import prettyMs from "pretty-ms";
-import type { AgentStatusResult, GitStatusResult, PrStatus, WorktreeInfo } from "./worktree-info.js";
+import type { AgentStatusResult, GitStatusResult, PrStatus, WorktreeInfo, DisplayRow } from "./worktree-info.js";
+import { isDependencyRef } from "./worktree-info.js";
 
 export function formatAgentStatus(agent: AgentStatusResult): string {
   if (agent.status === "none") return "-";
@@ -22,14 +23,19 @@ export function needsAttention(wt: WorktreeInfo): boolean {
   return wt.agent.status !== "active" && !isBusyStatus(wt.prStatus);
 }
 
-export function renderWorktreeTable(worktrees: WorktreeInfo[]): void {
+export function renderWorktreeTable(rows: DisplayRow[]): void {
   console.log("| | Worktree | Agent | Git | QA | PR |");
   console.log("| --- | --- | --- | --- | --- | --- |");
 
-  for (const wt of worktrees) {
+  for (const row of rows) {
+    if (isDependencyRef(row)) {
+      // Dependency ref - just show the name with indent
+      console.log(`|  | └─ ${row.name} |  |  |  |  |`);
+      continue;
+    }
+    const wt = row;
     const attention = needsAttention(wt) ? "!" : "";
-    const namePrefix = wt.blocked ? "└─ " : "";
-    const nameLink = `[${namePrefix}${wt.name}](${wt.cursorUrl})`;
+    const nameLink = `[${wt.name}](${wt.cursorUrl})`;
     const agentDisplay = formatAgentStatus(wt.agent);
     const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
     const prStatusDisplay = wt.prUrl ? `[${prLabel}](${wt.prUrl})` : prLabel;
