@@ -14,7 +14,7 @@ import { execAsync } from "./utils.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-type InputMode = "normal" | "inputBase" | "inputDescription";
+type InputMode = "normal" | "inputBase" | "inputDescription" | "selectDependency";
 
 const BENTO_DIR = join(homedir(), "carrot");
 const LOCAL_REFRESH_INTERVAL = 5000; // 5 seconds
@@ -104,13 +104,14 @@ interface ColumnWidths {
 }
 
 function getRowData(wt: WorktreeInfo) {
-  const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused;
+  const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused && !wt.blocked;
   const attention = wt.paused ? "P" : needsAttention ? "!" : " ";
+  const namePrefix = wt.blocked ? "└─ " : "";
   const agent = formatAgentStatus(wt.agent);
   const git = formatGitStatus(wt.git);
   const pr = wt.prStatus === "none" ? "-" : wt.prStatus;
   const qa = wt.qaStatus === "none" ? "-" : wt.qaStatus;
-  return { attention, name: wt.name, agent, git, qa, pr, needsAttention };
+  return { attention, name: wt.name, namePrefix, agent, git, qa, pr, needsAttention };
 }
 
 function computeColumnWidths(data: WorktreeInfo[]): ColumnWidths {
@@ -124,7 +125,7 @@ function computeColumnWidths(data: WorktreeInfo[]): ColumnWidths {
 
   for (const wt of data) {
     const row = getRowData(wt);
-    widths.name = Math.max(widths.name, row.name.length);
+    widths.name = Math.max(widths.name, row.namePrefix.length + row.name.length);
     widths.agent = Math.max(widths.agent, row.agent.length);
     widths.git = Math.max(widths.git, row.git.length);
     widths.qa = Math.max(widths.qa, row.qa.length);
@@ -173,13 +174,14 @@ interface WorktreeRowProps {
 function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
   const row = getRowData(wt);
   const bgColor = selected ? "whiteBright" : undefined;
-  const dimmed = wt.paused;
+  const dimmed = wt.paused || wt.blocked;
   const highlight = dimmed ? null : getHighlightColumn(wt);
 
   // Pad each cell to fill its column width, plus 2 for gap
   const gap = "  ";
   const attentionPad = row.attention;
-  const namePad = row.name.padEnd(widths.name);
+  const fullName = row.namePrefix + row.name;
+  const namePad = fullName.padEnd(widths.name);
   const agentPad = row.agent.padEnd(widths.agent);
   const gitPad = row.git.padEnd(widths.git);
   const qaPad = row.qa.padEnd(widths.qa);
@@ -264,6 +266,7 @@ function Footer({ refreshing, message, focused, openAction }: FooterProps) {
     <Box justifyContent="space-between">
       <Text dimColor>
         <Text color="cyan">P</Text>{"ause   "}
+        <Text color="cyan">D</Text>{"ep   "}
         <Text color="cyan">Q</Text>{"A   "}
         <Text color="cyan">R</Text>{"efresh   "}
         <Text color="cyan">N</Text>{"ew   "}
@@ -423,6 +426,39 @@ function WorktreeApp() {
     await refresh();
   }, [selectedWorktree, refresh]);
 
+  const handleDependency = useCallback(async () => {
+    if (!selectedWorktree) return;
+
+    // If has dependency, clear it
+    if (selectedWorktree.dependsOn) {
+      const config = await readWorktreeConfig(selectedWorktree.name);
+      delete config.dependsOn;
+      await writeWorktreeConfig(selectedWorktree.name, config);
+      setMessage(`${selectedWorktree.name}: dependency removed`);
+      await refresh();
+      return;
+    }
+
+    // Otherwise, enter selection mode
+    setInputMode("selectDependency");
+  }, [selectedWorktree, refresh]);
+
+  const handleDependencySelect = useCallback(async (item: { label: string; value: string }) => {
+    if (!selectedWorktree) return;
+    setInputMode("normal");
+
+    const config = await readWorktreeConfig(selectedWorktree.name);
+    config.dependsOn = item.value;
+    await writeWorktreeConfig(selectedWorktree.name, config);
+    setMessage(`${selectedWorktree.name}: now depends on ${item.value}`);
+    await refresh();
+  }, [selectedWorktree, refresh]);
+
+  // Options for dependency selection (all worktrees except the current one)
+  const dependencyOptions = data
+    .filter((wt) => wt.name !== selectedWorktree?.name)
+    .map((wt) => ({ label: wt.name, value: wt.name }));
+
   const baseOptions = Object.keys(WORKTREE_CONFIGS).map((key) => ({
     label: key,
     value: key,
@@ -499,6 +535,9 @@ function WorktreeApp() {
       setNewWorktreeBase("");
       setNewWorktreeDesc("");
     }
+    if (input === "d") {
+      handleDependency();
+    }
   });
 
   const widths = React.useMemo(() => computeColumnWidths(data), [data]);
@@ -550,6 +589,15 @@ function WorktreeApp() {
             onChange={setNewWorktreeDesc}
             onSubmit={handleDescriptionSubmit}
           />
+        </Box>
+      );
+    }
+
+    if (inputMode === "selectDependency") {
+      return (
+        <Box>
+          <Text>Depends on: </Text>
+          <SelectInput items={dependencyOptions} onSelect={handleDependencySelect} />
         </Box>
       );
     }

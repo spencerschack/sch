@@ -21,9 +21,10 @@ export function renderWorktreeTable(worktrees: WorktreeInfo[]): void {
   console.log("| --- | --- | --- | --- | --- | --- |");
 
   for (const wt of worktrees) {
-    const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused;
+    const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused && !wt.blocked;
     const attention = wt.paused ? "P" : needsAttention ? "!" : "";
-    const nameLink = `[${wt.name}](${wt.cursorUrl})`;
+    const namePrefix = wt.blocked ? "└─ " : "";
+    const nameLink = `[${namePrefix}${wt.name}](${wt.cursorUrl})`;
     const agentDisplay = formatAgentStatus(wt.agent);
     const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus;
     const prStatusDisplay = wt.prUrl ? `[${prLabel}](${wt.prUrl})` : prLabel;

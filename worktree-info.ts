@@ -32,6 +32,8 @@ export interface LocalWorktreeInfo {
   agent: AgentStatusResult;
   git: GitStatusResult;
   paused: boolean;
+  blocked: boolean;
+  dependsOn: string | null;
   qaStatus: QaStatus;
 }
 

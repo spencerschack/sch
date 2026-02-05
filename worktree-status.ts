@@ -306,6 +306,8 @@ export async function fetchLocalWorktreeInfo(entry: string): Promise<LocalWorktr
     agent,
     git,
     paused: config.paused ?? false,
+    blocked: false, // Computed later in mergeWorktreeData
+    dependsOn: config.dependsOn ?? null,
     qaStatus,
   };
 }
@@ -336,7 +338,12 @@ function getPrPriorityValue(status: PrStatus): number {
 }
 
 export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
-  return [...worktrees].sort((a, b) => {
+  // First, separate blocked and non-blocked worktrees
+  const nonBlocked = worktrees.filter((wt) => !wt.blocked);
+  const blocked = worktrees.filter((wt) => wt.blocked);
+
+  // Sort non-blocked worktrees normally
+  const sorted = [...nonBlocked].sort((a, b) => {
     if (a.paused !== b.paused) {
       return a.paused ? 1 : -1;
     }
@@ -347,6 +354,29 @@ export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
     }
     return getPrPriorityValue(a.prStatus) - getPrPriorityValue(b.prStatus);
   });
+
+  // Insert blocked worktrees after their dependencies
+  const result: WorktreeInfo[] = [];
+  const blockedByDep = new Map<string, WorktreeInfo[]>();
+
+  for (const wt of blocked) {
+    if (wt.dependsOn) {
+      const deps = blockedByDep.get(wt.dependsOn) ?? [];
+      deps.push(wt);
+      blockedByDep.set(wt.dependsOn, deps);
+    }
+  }
+
+  for (const wt of sorted) {
+    result.push(wt);
+    // Add any blocked worktrees that depend on this one
+    const deps = blockedByDep.get(wt.name);
+    if (deps) {
+      result.push(...deps);
+    }
+  }
+
+  return result;
 }
 
 export async function fetchAllLocalWorktreeInfo(): Promise<LocalWorktreeInfo[]> {
@@ -373,9 +403,24 @@ export function mergeWorktreeData(
   local: LocalWorktreeInfo[],
   remote: Map<string, RemoteWorktreeInfo>
 ): WorktreeInfo[] {
+  const localByName = new Map(local.map((l) => [l.name, l]));
+
   return local.map((l) => {
     const r = remote.get(l.name) ?? { prStatus: "none" as const, prUrl: null };
-    return { ...l, ...r };
+
+    // Compute blocked status based on dependency
+    let blocked = false;
+    if (l.dependsOn) {
+      const depExists = localByName.has(l.dependsOn);
+      if (depExists) {
+        const depRemote = remote.get(l.dependsOn);
+        // Blocked if dependency exists and its PR is not merged
+        blocked = depRemote?.prStatus !== "merged";
+      }
+      // If dependency doesn't exist, not blocked
+    }
+
+    return { ...l, ...r, blocked };
   });
 }
 
@@ -409,7 +454,7 @@ async function main() {
   }
 
   if (isNext) {
-    const first = worktrees.find((wt) => wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused);
+    const first = worktrees.find((wt) => wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused && !wt.blocked);
     if (!first) {
       console.log("No worktrees need attention");
       process.exit(0);

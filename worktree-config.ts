@@ -10,6 +10,7 @@ export const CONFIG_PATH = join(WORKTREES_DIR, ".worktree-config");
 export interface WorktreeConfig {
   paused?: boolean;
   qaCommit?: string;
+  dependsOn?: string;
 }
 
 export interface AllWorktreeConfigs {
@@ -50,14 +51,14 @@ async function getBentoCommit(): Promise<string> {
   return stdout.trim();
 }
 
-const VALID_ACTIONS = ["pause", "unpause", "remove", "qa"] as const;
+const VALID_ACTIONS = ["pause", "unpause", "remove", "qa", "depends", "undepends"] as const;
 type Action = typeof VALID_ACTIONS[number];
 
 async function main() {
-  const [worktreeName, action] = process.argv.slice(2);
+  const [worktreeName, action, dependencyName] = process.argv.slice(2);
 
   if (!worktreeName || !action) {
-    console.error("Usage: npm run worktree-config <worktree-name> <pause|unpause|remove|qa>");
+    console.error("Usage: npm run worktree-config <worktree-name> <pause|unpause|remove|qa|depends|undepends> [dependency-name]");
     process.exit(1);
   }
 
@@ -95,14 +96,32 @@ async function main() {
     case "qa":
       config.qaCommit = await getBentoCommit();
       break;
+    case "depends":
+      if (!dependencyName) {
+        console.error("Usage: npm run worktree-config <worktree-name> depends <dependency-name>");
+        process.exit(1);
+      }
+      config.dependsOn = dependencyName;
+      break;
+    case "undepends":
+      delete config.dependsOn;
+      break;
   }
 
   await writeWorktreeConfig(worktreeName, config);
 
-  if (action === "qa") {
-    console.log(`${worktreeName}: QA recorded at ${config.qaCommit?.slice(0, 7)}`);
-  } else {
-    console.log(`${worktreeName}: ${action}d`);
+  switch (action) {
+    case "qa":
+      console.log(`${worktreeName}: QA recorded at ${config.qaCommit?.slice(0, 7)}`);
+      break;
+    case "depends":
+      console.log(`${worktreeName}: now depends on ${dependencyName}`);
+      break;
+    case "undepends":
+      console.log(`${worktreeName}: dependency removed`);
+      break;
+    default:
+      console.log(`${worktreeName}: ${action}d`);
   }
 }
 
