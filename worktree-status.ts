@@ -206,6 +206,14 @@ function analyzeCiStatus(checks: StatusCheck[]): CiResult {
     }
   }
 
+  const pending = validChecks.some((check) => {
+    return check.state === "PENDING" || check.status === "IN_PROGRESS" || check.status === "QUEUED";
+  });
+
+  if (pending) {
+    return { status: "running" };
+  }
+
   const failures = validChecks.filter((check) => {
     const isFailed = check.state === "FAILURE" || check.state === "ERROR" || check.conclusion === "FAILURE";
     const name = check.name ?? check.context ?? "";
@@ -226,14 +234,6 @@ function analyzeCiStatus(checks: StatusCheck[]): CiResult {
   if (freezeCheck) {
     const freezeUrl = freezeCheck.targetUrl ?? freezeCheck.detailsUrl;
     return { status: "frozen", freezeUrl };
-  }
-
-  const pending = validChecks.some((check) => {
-    return check.state === "PENDING" || check.status === "IN_PROGRESS" || check.status === "QUEUED";
-  });
-
-  if (pending) {
-    return { status: "running" };
   }
 
   return { status: "pass" };
@@ -403,6 +403,14 @@ async function main() {
     const first = worktrees.find((wt) => wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused);
     if (!first) {
       console.log("No worktrees need attention");
+      process.exit(0);
+    }
+
+    const needsQa = first.qaStatus === "none" || first.qaStatus === "stale";
+    if (needsQa && first.prStatus !== "none") {
+      console.log(`Needs QA: ${first.name}`);
+      console.log(`QA Status: ${first.qaStatus}`);
+      console.log(`PR: ${first.prUrl}`);
       process.exit(0);
     }
 
