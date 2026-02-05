@@ -120,7 +120,7 @@ Example: `npm run worktree-new sage test-create-recipe-tool`
 
 ## worktree-status
 
-Shows the status of all worktrees and their agent sessions. Outputs a table with columns for worktree name, status, and last activity time. Output the results exactly without modifications—do not strip links or other formatting. If the status shows any merged PRs, ask if I want to remove those worktrees. If the status shows any expired PRs, ask if I should pull latest master, merge master into the expired branches, and push.
+Shows the status of all worktrees and their agent sessions. Outputs a table with columns for worktree name, status, and last activity time. Output the results exactly without modifications—do not strip links or other formatting. If the status shows any merged PRs, ask if I want to remove those worktrees. If the status shows any expired PRs that are not paused, ask if I should pull latest master, merge master into the expired branches, and push.
 
 ```
 npm run worktree-status

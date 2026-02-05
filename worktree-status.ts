@@ -284,7 +284,7 @@ function getWorkingDirectory(worktreePath: string, name: string): string {
   return worktreePath;
 }
 
-async function processWorktree(entry: string): Promise<WorktreeInfo | null> {
+export async function processWorktree(entry: string): Promise<WorktreeInfo | null> {
   if (entry.startsWith("@")) return null;
 
   const worktreePath = join(WORKTREES_DIR, entry);
@@ -313,28 +313,16 @@ async function processWorktree(entry: string): Promise<WorktreeInfo | null> {
   };
 }
 
-async function openUrl(url: string): Promise<void> {
+export async function openUrl(url: string): Promise<void> {
   await execAsync(`open "${url}"`);
 }
 
-async function main() {
-  const isNext = process.argv.includes("--next");
+function getPrPriorityValue(status: PrStatus): number {
+  return getPrPriority(status);
+}
 
-  if (!(await exists(WORKTREES_DIR))) {
-    console.log(`No worktrees directory found at ${WORKTREES_DIR}`);
-    process.exit(1);
-  }
-
-  const entries = await readdir(WORKTREES_DIR);
-  const results = await Promise.all(entries.map(processWorktree));
-  const worktrees = results.filter((wt): wt is WorktreeInfo => wt !== null);
-
-  if (worktrees.length === 0) {
-    console.log("No worktrees with active Cursor sessions");
-    process.exit(0);
-  }
-
-  worktrees.sort((a, b) => {
+export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
+  return [...worktrees].sort((a, b) => {
     if (a.paused !== b.paused) {
       return a.paused ? 1 : -1;
     }
@@ -343,8 +331,38 @@ async function main() {
     if (aNeedsAttention !== bNeedsAttention) {
       return aNeedsAttention ? -1 : 1;
     }
-    return getPrPriority(a.prStatus) - getPrPriority(b.prStatus);
+    return getPrPriorityValue(a.prStatus) - getPrPriorityValue(b.prStatus);
   });
+}
+
+export async function fetchWorktrees(): Promise<WorktreeInfo[]> {
+  if (!(await exists(WORKTREES_DIR))) {
+    return [];
+  }
+
+  const entries = await readdir(WORKTREES_DIR);
+  const results = await Promise.all(entries.map(processWorktree));
+  const worktrees = results.filter((wt): wt is WorktreeInfo => wt !== null);
+
+  return sortWorktrees(worktrees);
+}
+
+async function main() {
+  const isNext = process.argv.includes("--next");
+  const isTui = process.argv.includes("--tui");
+
+  if (isTui) {
+    const { renderTui } = await import("./render-tui.js");
+    await renderTui();
+    return;
+  }
+
+  const worktrees = await fetchWorktrees();
+
+  if (worktrees.length === 0) {
+    console.log("No worktrees found");
+    process.exit(0);
+  }
 
   if (isNext) {
     const first = worktrees.find((wt) => wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused);

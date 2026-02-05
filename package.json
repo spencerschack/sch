@@ -9,17 +9,24 @@
   "scripts": {
     "worktree-status": "tsx worktree-status.ts",
     "worktree-next": "tsx worktree-status.ts --next",
+    "worktree-tui": "tsx worktree-status.ts --tui",
     "worktree-new": "tsx worktree-new.ts",
     "worktree-config": "tsx worktree-config.ts",
     "worktree-remove": "tsx worktree-remove.ts",
     "window": "tsx window-management.ts"
   },
   "dependencies": {
+    "@aliou/pi-processes": "^0.3.3",
     "@mariozechner/pi-coding-agent": "^0.51.6",
-    "pretty-ms": "^9.3.0"
+    "ink": "^6.6.0",
+    "ink-link": "^5.0.0",
+    "ink-spinner": "^5.0.0",
+    "pretty-ms": "^9.3.0",
+    "react": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/react": "^19.2.13",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   }
