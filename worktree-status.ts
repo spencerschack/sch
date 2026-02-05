@@ -1,32 +1,14 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import prettyMs from "pretty-ms";
 import { WORKTREES_DIR, readWorktreeConfig, WorktreeConfig } from "./worktree-config.js";
 import { execAsync, exists, isMain } from "./utils.js";
+import type { AgentStatusResult, GitStatusResult, PrStatus, QaStatus, WorktreeInfo } from "./worktree-info.js";
+import { isBusyStatus, renderWorktreeTable } from "./render-table.js";
 
 const CURSOR_PROJECTS_DIR = join(homedir(), ".cursor", "projects");
 const IDLE_THRESHOLD_SECONDS = 30;
 const IGNORED_CHECKS = ["semgrep-cloud-platform/scan"];
-
-type GitStatus = "clean" | "changed";
-type QaStatus = "done" | "stale" | "none";
-
-interface GitStatusResult {
-  status: GitStatus;
-  count: number;
-}
-
-interface WorktreeInfo {
-  name: string;
-  cursorUrl: string;
-  agent: AgentStatusResult;
-  git: GitStatusResult;
-  prStatus: PrStatus;
-  prUrl: string | null;
-  paused: boolean;
-  qaStatus: QaStatus;
-}
 
 interface StatusCheck {
   __typename: string;
@@ -53,20 +35,6 @@ interface GraphQLPrData {
   mergeQueueEntry: { state: string } | null;
   comments: { nodes: PrComment[] };
   statusCheckRollup: { contexts: { nodes: StatusCheck[] } } | null;
-}
-
-type AgentStatus = "none" | "active" | "idle";
-
-interface AgentStatusResult {
-  status: AgentStatus;
-  age: number;
-}
-
-function formatAgentStatus(agent: AgentStatusResult): string {
-  if (agent.status === "none") return "-";
-  const formatted = prettyMs(agent.age * 1000, { compact: true });
-  if (agent.status === "active") return `active ${formatted}`;
-  return `idle ${formatted}`;
 }
 
 async function getAgentStatus(worktreeName: string): Promise<AgentStatusResult> {
@@ -116,10 +84,6 @@ async function getGitInfo(worktreePath: string): Promise<GitStatusResult> {
   const output = stdout.trim();
   const count = output ? output.split("\n").length : 0;
   return { status: count === 0 ? "clean" : "changed", count };
-}
-
-function formatGitStatus(git: GitStatusResult): string {
-  return git.status === "clean" ? "clean" : `${git.count} changed`;
 }
 
 async function getCurrentCommit(worktreePath: string): Promise<string> {
@@ -239,26 +203,9 @@ function analyzeCiStatus(checks: StatusCheck[]): CiResult {
   return { status: "pass" };
 }
 
-type PrStatus =
-  | "none"
-  | "approved"
-  | "assign"
-  | "failed"
-  | "expired"
-  | "frozen"
-  | "waiting"
-  | "running"
-  | "queued"
-  | "merged"
-  | "closed";
-
 interface PrStatusResult {
   status: PrStatus;
   url: string | null;
-}
-
-function isBusyStatus(status: PrStatus): boolean {
-  return status === "frozen" || status === "running" || status === "queued" || status === "waiting";
 }
 
 function getPrPriority(status: PrStatus): number {
@@ -420,19 +367,7 @@ async function main() {
     process.exit(0);
   }
 
-  console.log("| | Worktree | Agent | Git | QA | PR |");
-  console.log("| --- | --- | --- | --- | --- | --- |");
-
-  for (const wt of worktrees) {
-    const needsAttention = wt.agent.status !== "active" && !isBusyStatus(wt.prStatus) && !wt.paused;
-    const attention = wt.paused ? "P" : needsAttention ? "!" : "";
-    const nameLink = `[${wt.name}](${wt.cursorUrl})`;
-    const agentDisplay = formatAgentStatus(wt.agent);
-    const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus;
-    const prStatusDisplay = wt.prUrl ? `[${prLabel}](${wt.prUrl})` : prLabel;
-    const qaDisplay = wt.qaStatus === "none" ? "-" : wt.qaStatus;
-    console.log(`| ${attention} | ${nameLink} | ${agentDisplay} | ${formatGitStatus(wt.git)} | ${qaDisplay} | ${prStatusDisplay} |`);
-  }
+  renderWorktreeTable(worktrees);
 }
 
 if (isMain(import.meta.url)) {
