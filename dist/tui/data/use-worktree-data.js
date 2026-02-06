@@ -9,26 +9,37 @@ export function useWorktreeData(paused) {
     const [remoteData, setRemoteData] = useState(new Map());
     const [loading, setLoading] = useState(true);
     const [lastRemoteRefresh, setLastRemoteRefresh] = useState(null);
+    // Track if component is mounted to avoid state updates after unmount
+    const mountedRef = useRef(true);
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
     const refreshLocal = useCallback(async () => {
         const local = await fetchAllLocalWorktreeInfo();
-        setLocalData(local);
+        if (mountedRef.current)
+            setLocalData(local);
         return local;
     }, []);
     const refreshRemote = useCallback(async (names) => {
         if (names.length === 0)
             return;
         const remote = await fetchAllRemoteWorktreeInfo(names);
-        setRemoteData(remote);
-        setLastRemoteRefresh(new Date());
+        if (mountedRef.current) {
+            setRemoteData(remote);
+            setLastRemoteRefresh(new Date());
+        }
     }, []);
     const refresh = useCallback(async () => {
-        setLoading(true);
+        if (mountedRef.current)
+            setLoading(true);
         try {
             const local = await refreshLocal();
             await refreshRemote(local.map((l) => l.name));
         }
         finally {
-            setLoading(false);
+            if (mountedRef.current)
+                setLoading(false);
         }
     }, [refreshLocal, refreshRemote]);
     // Initial load
