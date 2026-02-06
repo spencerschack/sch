@@ -76,7 +76,10 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     setState("creating");
 
     try {
-      const result = await createWorktree(base, description, selectedProvider);
+      const result = await createWorktree(base, description, {
+        provider: selectedProvider,
+        silent: true,
+      });
       const msg = `Created: ${result.worktreeName}`;
       setMessage(msg);
       options.onMessage?.(msg);

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
+import { access, constants } from "node:fs/promises";
 import { WORKTREES_DIR } from "../worktree/paths.js";
 import { writeWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { execAsync } from "../utils.js";
@@ -15,24 +16,21 @@ export const WORKTREE_CONFIGS: Record<string, WorktreeConfigDef> = {
   github: { workingDir: ".github" },
 };
 
-async function run(command: string, cwd: string): Promise<string> {
-  const { stdout } = await execAsync(command, { cwd });
-  return stdout.trim();
-}
-
-// Uses spawn with stdio: "inherit" to stream setup output in real-time
-export async function runSetup(cwd: string): Promise<void> {
+function runCommand(command: string, cwd: string, silent = false): Promise<string> {
+  if (silent) {
+    return execAsync(command, { cwd }).then(({ stdout }) => stdout.trim());
+  }
   return new Promise((resolve, reject) => {
-    const child = spawn("script/setup", [], {
-      cwd,
-      stdio: "inherit",
-      shell: true,
-    });
+    const child = spawn(command, [], { cwd, stdio: "inherit", shell: true });
     child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`script/setup exited with code ${code}`));
+      if (code === 0) resolve("");
+      else reject(new Error(`${command} exited with code ${code}`));
     });
   });
+}
+
+export function runSetup(cwd: string, silent = false): Promise<void> {
+  return runCommand("script/setup", cwd, silent).then(() => {});
 }
 
 export interface CreateWorktreeResult {
@@ -41,18 +39,26 @@ export interface CreateWorktreeResult {
   workingDir: string;
 }
 
+export interface CreateWorktreeOptions {
+  /** The agent provider to use (defaults to "cursor") */
+  provider?: AgentProvider;
+  /** Use silent mode for setup - no terminal output (for TUI use) */
+  silent?: boolean;
+}
+
 /**
- * Creates a new worktree without running setup or opening the agent.
- * Used by the TUI to create worktrees programmatically.
+ * Creates a new worktree and optionally runs setup.
  * @param base - The base worktree type (sage, store, etc.)
  * @param description - The description for the branch name
- * @param provider - The agent provider to use (defaults to "cursor")
+ * @param options - Creation options
  */
 export async function createWorktree(
   base: string,
   description: string,
-  provider: AgentProvider = "cursor"
+  options: CreateWorktreeOptions = {}
 ): Promise<CreateWorktreeResult> {
+  const { provider = "cursor", silent = false } = options;
+
   const config = WORKTREE_CONFIGS[base];
   if (!config) {
     throw new Error(`Unknown base worktree: ${base}. Available: ${Object.keys(WORKTREE_CONFIGS).join(", ")}`);
@@ -76,9 +82,18 @@ export async function createWorktree(
     agentProvider: provider,
   });
 
-  await run("git fetch origin master", baseWorktree);
-  await run("git rebase origin/master", baseWorktree);
-  await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
+  await runCommand("git fetch --quiet origin master", baseWorktree, true);
+  await runCommand("git rebase --quiet origin/master", baseWorktree, true);
+  await runCommand(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree, true);
+
+  // Run script/setup if it exists
+  const setupPath = join(workingDir, "script", "setup");
+  try {
+    await access(setupPath, constants.X_OK);
+    await runSetup(workingDir, silent);
+  } catch {
+    // script/setup doesn't exist or isn't executable, skip
+  }
 
   return { worktreeName, branchName, workingDir };
 }

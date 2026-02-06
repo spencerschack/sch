@@ -1,6 +1,4 @@
-import { join } from "node:path";
-import { access, constants } from "node:fs/promises";
-import { createWorktree, runSetup, WORKTREE_CONFIGS } from "../lifecycle/create.js";
+import { createWorktree, WORKTREE_CONFIGS } from "../lifecycle/create.js";
 import { launchAgent } from "../agent/provider.js";
 import type { AgentProvider } from "../worktree/config.js";
 
@@ -52,19 +50,9 @@ export async function main(args: string[] = process.argv.slice(2)) {
 
   console.log(`Fetching latest master...`);
   console.log(`Rebasing @${base} onto origin/master...`);
-  console.log(`Creating worktree...`);
+  console.log(`Creating worktree and running setup...`);
 
-  const result = await createWorktree(base, description, provider);
-
-  // Check if script/setup exists before running it
-  const setupPath = join(result.workingDir, "script", "setup");
-  try {
-    await access(setupPath, constants.X_OK);
-    console.log(`Running script/setup in ${WORKTREE_CONFIGS[base].workingDir}...`);
-    await runSetup(result.workingDir);
-  } catch {
-    console.log(`No script/setup found, skipping setup step.`);
-  }
+  const result = await createWorktree(base, description, { provider });
 
   const providerLabel = provider === "cursor" ? "Cursor" : provider === "claude" ? "Claude Code" : "Cursor CLI";
   console.log(`Launching ${providerLabel}...`);

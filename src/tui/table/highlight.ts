@@ -20,8 +20,8 @@ export function getHighlightColumn(wt: WorktreeInfo): HighlightColumn {
   if (wt.git.status === "changed") {
     return "git";
   }
-  // Priority 5: PR is running/queued (positive status)
-  if (wt.prStatus === "running" || wt.prStatus === "queued" || wt.prStatus === "approved" || wt.prStatus === "waiting") {
+  // Priority 5: PR is busy/running (positive status)
+  if (wt.prStatus === "loading" || wt.prStatus === "running" || wt.prStatus === "queued" || wt.prStatus === "approved" || wt.prStatus === "waiting") {
     return "pr";
   }
   // Priority 6: Agent is active

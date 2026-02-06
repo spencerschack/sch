@@ -6,8 +6,9 @@ export function isBusyStatus(status: PrStatus): boolean {
 
 export function needsAttention(wt: WorktreeInfo): boolean {
   if (wt.paused || wt.blocked) return false;
+  if (wt.agent.status === "active") return false;
   if (wt.git.status === "changed") return true;
-  return wt.agent.status !== "active" && !isBusyStatus(wt.prStatus);
+  return !isBusyStatus(wt.prStatus);
 }
 
 export function getPrPriority(status: PrStatus): number {
