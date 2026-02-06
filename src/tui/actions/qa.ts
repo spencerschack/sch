@@ -10,6 +10,14 @@ export interface QaResult {
 
 export async function handleQa(wt: WorktreeInfo): Promise<QaResult> {
   try {
+    // If QA is already done, toggle it off
+    if (wt.qaStatus === "done") {
+      const config = await readWorktreeConfig(wt.name);
+      delete config.qaCommit;
+      await writeWorktreeConfig(wt.name, config);
+      return { success: true, message: `${wt.name}: QA cleared` };
+    }
+
     const [worktreeCommit, bentoCommit] = await Promise.all([
       getWorktreeCommit(wt.name),
       getBentoCommit(),

@@ -152,6 +152,8 @@ export function WorktreeApp() {
       });
     }
     if (input === "q" && selectedWorktree) {
+      const action = selectedWorktree.qaStatus === "done" ? "Clearing" : "Processing";
+      setMessage(`${action} QA for ${selectedWorktree.name}...`);
       handleQa(selectedWorktree).then((result) => {
         setMessage(result.message);
         refreshLocal();
