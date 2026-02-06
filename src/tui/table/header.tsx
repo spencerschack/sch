@@ -33,6 +33,8 @@ export function TableHeader({ widths, lastRemoteRefresh }: TableHeaderProps) {
         {"QA".padEnd(widths.qa)}
         {gap}
         {prHeader.padEnd(widths.pr)}
+        {gap}
+        {"Deploy".padEnd(widths.deploy)}
       </Text>
     </Box>
   );

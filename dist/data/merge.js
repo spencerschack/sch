@@ -8,7 +8,7 @@ import { fetchRemoteWorktreeInfo } from "./remote.js";
 export function mergeWorktreeData(local, remote) {
     const localByName = new Map(local.map((l) => [l.name, l]));
     return local.map((l) => {
-        const r = remote.get(l.name) ?? { prStatus: "loading", prUrl: null, assignUrl: null };
+        const r = remote.get(l.name) ?? { prStatus: "loading", prUrl: null, assignUrl: null, commitSha: null, deployStatus: "loading" };
         // Compute blocked status based on dependencies
         // Blocked if ANY dependency exists and its PR is not merged
         let blocked = false;

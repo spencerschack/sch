@@ -5,14 +5,15 @@ import { WORKTREES_DIR } from "../worktree/paths.js";
 import { writeWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { execAsync } from "../utils.js";
 
-interface WorktreeConfigDef {
+export interface WorktreeConfigDef {
   workingDir: string;
+  service?: string;
 }
 
 export const WORKTREE_CONFIGS: Record<string, WorktreeConfigDef> = {
-  sage: { workingDir: "sage/sage-backend" },
-  store: { workingDir: "customers/store" },
-  migrations: { workingDir: "tools/migrations" },
+  sage: { workingDir: "sage/sage-backend", service: "api.sage-backend.customers" },
+  store: { workingDir: "customers/store", service: "web.instacart.customers" },
+  migrations: { workingDir: "tools/migrations", service: "migrations.tools" },
   github: { workingDir: ".github" },
 };
 

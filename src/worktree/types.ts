@@ -30,6 +30,14 @@ export type PrStatus =
   | "merged"
   | "closed";
 
+export type DeployStatus =
+  | "loading"
+  | "none"
+  | "pending"
+  | "in-progress"
+  | "succeeded"
+  | "failed";
+
 export interface LocalWorktreeInfo {
   name: string;
   agentProvider: AgentProvider;
@@ -45,6 +53,8 @@ export interface RemoteWorktreeInfo {
   prStatus: PrStatus;
   prUrl: string | null;
   assignUrl: string | null;
+  commitSha: string | null;
+  deployStatus: DeployStatus;
 }
 
 export interface WorktreeInfo extends LocalWorktreeInfo, RemoteWorktreeInfo {}

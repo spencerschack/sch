@@ -4,7 +4,7 @@ import type { WorktreeInfo } from "../../worktree/types.js";
 import type { ColumnWidths } from "./columns.js";
 import { getRowData } from "./columns.js";
 import { getHighlightColumn } from "./highlight.js";
-import { getStatusColor, getAgentColor, getQaColor } from "./colors.js";
+import { getStatusColor, getAgentColor, getQaColor, getDeployColor } from "./colors.js";
 
 interface WorktreeRowProps {
   wt: WorktreeInfo;
@@ -26,6 +26,7 @@ export function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
   const gitPad = row.git.padEnd(widths.git);
   const qaPad = row.qa.padEnd(widths.qa);
   const prPad = row.pr.padEnd(widths.pr);
+  const deployPad = row.deploy.padEnd(widths.deploy);
 
   return (
     <Box>
@@ -52,6 +53,10 @@ export function WorktreeRow({ wt, selected, widths }: WorktreeRowProps) {
         {gap}
         <Text color={highlight === "pr" ? getStatusColor(wt.prStatus) : undefined}>
           {prPad}
+        </Text>
+        {gap}
+        <Text color={highlight === "deploy" ? getDeployColor(wt.deployStatus) : undefined}>
+          {deployPad}
         </Text>
       </Text>
     </Box>

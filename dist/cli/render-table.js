@@ -23,13 +23,31 @@ async function getWorktreeUrl(wt) {
     // For CLI providers, link to the working directory
     return workingDir;
 }
+function formatDeployStatus(status) {
+    switch (status) {
+        case "loading":
+            return "...";
+        case "none":
+            return "-";
+        case "pending":
+            return "pending";
+        case "in-progress":
+            return "deploying";
+        case "succeeded":
+            return "deployed";
+        case "failed":
+            return "failed";
+        default:
+            return "-";
+    }
+}
 export async function renderWorktreeTable(rows) {
-    console.log("| | Worktree | Agent | Git | QA | PR |");
-    console.log("| --- | --- | --- | --- | --- | --- |");
+    console.log("| | Worktree | Agent | Git | QA | PR | Deploy |");
+    console.log("| --- | --- | --- | --- | --- | --- | --- |");
     for (const row of rows) {
         if (isDependencyRef(row)) {
             // Dependency ref - just show the name with indent
-            console.log(`|  | └─ ${row.name} |  |  |  |  |`);
+            console.log(`|  | └─ ${row.name} |  |  |  |  |  |`);
             continue;
         }
         const wt = row;
@@ -40,6 +58,7 @@ export async function renderWorktreeTable(rows) {
         const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
         const prStatusDisplay = wt.prUrl ? `[${prLabel}](${wt.prUrl})` : prLabel;
         const qaDisplay = wt.qaStatus === "none" ? "-" : wt.qaStatus;
-        console.log(`| ${attention} | ${nameLink} | ${agentDisplay} | ${formatGitStatus(wt.git)} | ${qaDisplay} | ${prStatusDisplay} |`);
+        const deployDisplay = formatDeployStatus(wt.deployStatus);
+        console.log(`| ${attention} | ${nameLink} | ${agentDisplay} | ${formatGitStatus(wt.git)} | ${qaDisplay} | ${prStatusDisplay} | ${deployDisplay} |`);
     }
 }

@@ -8,6 +8,7 @@ export async function fetchPrData(branch) {
           nodes {
             state
             number
+            headRefOid
             reviewDecision
             mergeable
             mergeQueueEntry { state }
@@ -55,45 +56,46 @@ export async function fetchPrData(branch) {
 export function computePrStatus(pr) {
     const prUrl = `https://github.com/instacart/carrot/pull/${pr.number}`;
     const assignUrl = `https://pr.instacart.tools/pull-requests/mine?assignRepo=carrot&assignPr=${pr.number}`;
+    const commitSha = pr.headRefOid;
     if (pr.state === "MERGED")
-        return { status: "merged", url: prUrl, assignUrl: null };
+        return { status: "merged", url: prUrl, assignUrl: null, commitSha };
     if (pr.state === "CLOSED")
-        return { status: "closed", url: prUrl, assignUrl: null };
+        return { status: "closed", url: prUrl, assignUrl: null, commitSha };
     if (pr.state !== "OPEN")
-        return { status: "none", url: null, assignUrl: null };
+        return { status: "none", url: null, assignUrl: null, commitSha: null };
     const checks = pr.statusCheckRollup?.contexts?.nodes ?? [];
     const ciResult = analyzeCiStatus(checks);
     // Check merge queue first - if in queue, show "queued" regardless of CI status
     if (pr.mergeQueueEntry) {
-        return { status: "queued", url: prUrl, assignUrl };
+        return { status: "queued", url: prUrl, assignUrl, commitSha };
     }
     if (ciResult.status === "expired")
-        return { status: "expired", url: prUrl, assignUrl };
+        return { status: "expired", url: prUrl, assignUrl, commitSha };
     if (pr.mergeable === "CONFLICTING")
-        return { status: "conflict", url: prUrl, assignUrl };
+        return { status: "conflict", url: prUrl, assignUrl, commitSha };
     if (ciResult.status === "fail")
-        return { status: "failed", url: prUrl, assignUrl };
+        return { status: "failed", url: prUrl, assignUrl, commitSha };
     if (ciResult.status === "frozen") {
         const freezeUrl = ciResult.freezeUrl ?? prUrl;
-        return { status: "frozen", url: freezeUrl, assignUrl };
+        return { status: "frozen", url: freezeUrl, assignUrl, commitSha };
     }
     if (ciResult.status === "running")
-        return { status: "running", url: prUrl, assignUrl };
+        return { status: "running", url: prUrl, assignUrl, commitSha };
     if (pr.reviewDecision === "APPROVED")
-        return { status: "approved", url: prUrl, assignUrl };
+        return { status: "approved", url: prUrl, assignUrl, commitSha };
     const comments = pr.comments?.nodes ?? [];
     const inboxComment = comments.find((c) => c.author?.login === "pr-inbox-app");
     const needsAssignment = inboxComment?.body.includes("Ready for Review?") ?? false;
     if (needsAssignment) {
-        return { status: "assign", url: prUrl, assignUrl };
+        return { status: "assign", url: prUrl, assignUrl, commitSha };
     }
-    return { status: "waiting", url: prUrl, assignUrl };
+    return { status: "waiting", url: prUrl, assignUrl, commitSha };
 }
 export async function getPrStatus(worktreePath) {
     const { stdout: branch } = await execAsync(`git -C "${worktreePath}" rev-parse --abbrev-ref HEAD`);
     const pr = await fetchPrData(branch);
     if (!pr) {
-        return { status: "none", url: null, assignUrl: null };
+        return { status: "none", url: null, assignUrl: null, commitSha: null };
     }
     return computePrStatus(pr);
 }

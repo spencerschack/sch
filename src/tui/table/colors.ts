@@ -1,4 +1,4 @@
-import type { PrStatus } from "../../worktree/types.js";
+import type { PrStatus, DeployStatus } from "../../worktree/types.js";
 
 export function getStatusColor(status: PrStatus): string | undefined {
   switch (status) {
@@ -43,6 +43,20 @@ export function getQaColor(status: string): string | undefined {
       return "green";
     case "stale":
       return "yellow";
+    default:
+      return undefined;
+  }
+}
+
+export function getDeployColor(status: DeployStatus): string | undefined {
+  switch (status) {
+    case "succeeded":
+      return "green";
+    case "in-progress":
+    case "pending":
+      return "cyan";
+    case "failed":
+      return "red";
     default:
       return undefined;
   }

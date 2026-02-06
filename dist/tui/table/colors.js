@@ -43,3 +43,16 @@ export function getQaColor(status) {
             return undefined;
     }
 }
+export function getDeployColor(status) {
+    switch (status) {
+        case "succeeded":
+            return "green";
+        case "in-progress":
+        case "pending":
+            return "cyan";
+        case "failed":
+            return "red";
+        default:
+            return undefined;
+    }
+}

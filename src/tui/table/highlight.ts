@@ -1,7 +1,7 @@
 import type { WorktreeInfo } from "../../worktree/types.js";
 import { isBusyStatus } from "../../status/attention.js";
 
-export type HighlightColumn = "agent" | "git" | "qa" | "pr" | null;
+export type HighlightColumn = "agent" | "git" | "qa" | "pr" | "deploy" | null;
 
 export function getHighlightColumn(wt: WorktreeInfo): HighlightColumn {
   // Priority 1: PR issues that block progress
@@ -24,11 +24,15 @@ export function getHighlightColumn(wt: WorktreeInfo): HighlightColumn {
   if (wt.prStatus === "loading" || wt.prStatus === "running" || wt.prStatus === "queued" || wt.prStatus === "approved" || wt.prStatus === "waiting") {
     return "pr";
   }
-  // Priority 6: Agent is active
+  // Priority 6: Deploy status for merged PRs
+  if (wt.prStatus === "merged" && wt.deployStatus !== "none") {
+    return "deploy";
+  }
+  // Priority 7: Agent is active
   if (wt.agent.status === "active") {
     return "agent";
   }
-  // Priority 7: QA is in testing
+  // Priority 8: QA is in testing
   if (wt.qaStatus === "testing") {
     return "qa";
   }

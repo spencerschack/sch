@@ -9,6 +9,7 @@ export interface ColumnWidths {
   git: number;
   qa: number;
   pr: number;
+  deploy: number;
 }
 
 export interface RowData {
@@ -18,7 +19,27 @@ export interface RowData {
   git: string;
   qa: string;
   pr: string;
+  deploy: string;
   needsAttention: boolean;
+}
+
+function formatDeployStatus(status: WorktreeInfo["deployStatus"]): string {
+  switch (status) {
+    case "loading":
+      return "...";
+    case "none":
+      return "-";
+    case "pending":
+      return "pending";
+    case "in-progress":
+      return "deploying";
+    case "succeeded":
+      return "deployed";
+    case "failed":
+      return "failed";
+    default:
+      return "-";
+  }
 }
 
 export function getRowData(wt: WorktreeInfo): RowData {
@@ -28,7 +49,8 @@ export function getRowData(wt: WorktreeInfo): RowData {
   const git = formatGitStatus(wt.git);
   const pr = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
   const qa = wt.qaStatus === "none" ? "-" : wt.qaStatus;
-  return { attention, name: wt.name, agent, git, qa, pr, needsAttention: wtNeedsAttention };
+  const deploy = formatDeployStatus(wt.deployStatus);
+  return { attention, name: wt.name, agent, git, qa, pr, deploy, needsAttention: wtNeedsAttention };
 }
 
 export function computeColumnWidths(data: DisplayRow[]): ColumnWidths {
@@ -38,6 +60,7 @@ export function computeColumnWidths(data: DisplayRow[]): ColumnWidths {
     git: "Git".length,
     qa: "QA".length,
     pr: "PR".length,
+    deploy: "Deploy".length,
   };
 
   for (const item of data) {
@@ -52,6 +75,7 @@ export function computeColumnWidths(data: DisplayRow[]): ColumnWidths {
     widths.git = Math.max(widths.git, row.git.length);
     widths.qa = Math.max(widths.qa, row.qa.length);
     widths.pr = Math.max(widths.pr, row.pr.length);
+    widths.deploy = Math.max(widths.deploy, row.deploy.length);
   }
 
   return widths;
