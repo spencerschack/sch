@@ -65,20 +65,20 @@ export async function createWorktree(
     throw new Error("GITHUB_USERNAME environment variable is not set");
   }
 
-  const branchName = `${githubUsername}/${base}-${description}`;
-  const worktreeName = `${base}-${description}`;
+  const branchName = `${githubUsername}/${description}`;
+  const worktreeName = description;
   const worktreePath = join(WORKTREES_DIR, worktreeName);
   const workingDir = join(worktreePath, config.workingDir);
 
-  await run("git fetch origin master", baseWorktree);
-  await run("git rebase origin/master", baseWorktree);
-  await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
-
-  // Save the worktree config with base and provider
+  // Save the worktree config first (before directory exists) to avoid race conditions
   await writeWorktreeConfig(worktreeName, {
     base,
     agentProvider: provider,
   });
+
+  await run("git fetch origin master", baseWorktree);
+  await run("git rebase origin/master", baseWorktree);
+  await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
 
   return { worktreeName, branchName, workingDir };
 }

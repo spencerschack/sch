@@ -55,7 +55,7 @@ export function CreationFlow({ creation }: CreationFlowProps) {
   if (creation.state === "selectingProvider") {
     return (
       <Box>
-        <Text>Provider for {creation.base}-{creation.description}: </Text>
+        <Text>Provider for {creation.description}: </Text>
         <SelectInput
           items={providerOptions}
           onSelect={(item) => creation.selectProvider(item.value as AgentProvider)}
