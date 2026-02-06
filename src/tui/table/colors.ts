@@ -15,6 +15,7 @@ export function getStatusColor(status: PrStatus): string | undefined {
     case "running":
       return "greenBright";
     case "queued":
+    case "merging":
       return "cyan";
     case "waiting":
     case "assign":

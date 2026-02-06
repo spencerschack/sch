@@ -24,6 +24,7 @@ export async function fetchPrData(branch: string): Promise<GraphQLPrData | null>
             reviewDecision
             mergeable
             mergeQueueEntry { state }
+            autoMergeRequest { enabledAt }
             comments(last: 50) {
               nodes {
                 author { login }
@@ -84,6 +85,11 @@ export function computePrStatus(pr: GraphQLPrData): PrStatusResult {
   // Check merge queue first - if in queue, show "queued" regardless of CI status
   if (pr.mergeQueueEntry) {
     return { status: "queued", url: prUrl, assignUrl, commitSha };
+  }
+
+  // Check if auto-merge is enabled
+  if (pr.autoMergeRequest) {
+    return { status: "merging", url: prUrl, assignUrl, commitSha };
   }
 
   if (ciResult.status === "expired") return { status: "expired", url: prUrl, assignUrl, commitSha };

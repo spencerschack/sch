@@ -26,6 +26,7 @@ export type PrStatus =
   | "frozen"
   | "waiting"
   | "running"
+  | "merging"
   | "queued"
   | "merged"
   | "closed";

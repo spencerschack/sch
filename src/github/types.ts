@@ -23,6 +23,7 @@ export interface GraphQLPrData {
   reviewDecision: string | null;
   mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
   mergeQueueEntry: { state: string } | null;
+  autoMergeRequest: { enabledAt: string } | null;
   comments: { nodes: PrComment[] };
   statusCheckRollup: { contexts: { nodes: StatusCheck[] } } | null;
 }

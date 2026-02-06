@@ -1,7 +1,7 @@
 import type { PrStatus, WorktreeInfo } from "../worktree/types.js";
 
 export function isBusyStatus(status: PrStatus): boolean {
-  return status === "loading" || status === "frozen" || status === "running" || status === "queued" || status === "waiting";
+  return status === "loading" || status === "frozen" || status === "running" || status === "queued" || status === "merging" || status === "waiting";
 }
 
 export function needsAttention(wt: WorktreeInfo): boolean {
@@ -25,6 +25,7 @@ export function getPrPriority(status: PrStatus): number {
     case "running": return 9;
     case "loading": return 9;
     case "merged": return 10;
+    case "merging": return 10;
     case "queued": return 10;
     case "closed": return 11;
   }
