@@ -8,17 +8,6 @@ import { getBentoCommit } from "../git.js";
 import { getAgentStatus } from "../agent/status.js";
 import { getGitInfo } from "../status/git.js";
 import { getQaStatus } from "../status/qa.js";
-import { WORKTREE_CONFIGS } from "../lifecycle/create.js";
-
-function getWorkingDirectory(worktreePath: string, name: string): string {
-  // Find matching config based on worktree name prefix
-  for (const [base, config] of Object.entries(WORKTREE_CONFIGS)) {
-    if (name.startsWith(`${base}-`)) {
-      return join(worktreePath, config.workingDir);
-    }
-  }
-  return worktreePath;
-}
 
 export async function fetchLocalWorktreeInfo(entry: string, bentoCommit: string): Promise<LocalWorktreeInfo | null> {
   if (entry.startsWith("@")) return null;
@@ -33,12 +22,10 @@ export async function fetchLocalWorktreeInfo(entry: string, bentoCommit: string)
   ]);
 
   const qaStatus = await getQaStatus(worktreePath, config, bentoCommit);
-  const workingDir = getWorkingDirectory(worktreePath, entry);
-  const cursorUrl = `cursor://file/${workingDir}`;
 
   return {
     name: entry,
-    cursorUrl,
+    agentProvider: config.agentProvider ?? "cursor",
     agent,
     git,
     paused: config.paused ?? false,

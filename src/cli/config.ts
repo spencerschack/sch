@@ -1,17 +1,28 @@
 import { join } from "node:path";
 import { exists, isMain } from "../utils.js";
 import { WORKTREES_DIR } from "../worktree/paths.js";
-import { readWorktreeConfig, writeWorktreeConfig, removeWorktreeConfig } from "../worktree/config.js";
+import { readWorktreeConfig, writeWorktreeConfig, removeWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { getBentoCommit } from "../git.js";
 
-const VALID_ACTIONS = ["pause", "unpause", "remove", "qa", "depends", "undepends"] as const;
+const VALID_ACTIONS = ["pause", "unpause", "remove", "qa", "depends", "undepends", "provider"] as const;
 type Action = typeof VALID_ACTIONS[number];
 
+const VALID_PROVIDERS: AgentProvider[] = ["cursor", "claude", "cursor-cli"];
+
 async function main() {
-  const [worktreeName, action, dependencyName] = process.argv.slice(2);
+  const [worktreeName, action, argValue] = process.argv.slice(2);
 
   if (!worktreeName || !action) {
-    console.error("Usage: npm run worktree-config <worktree-name> <pause|unpause|remove|qa|depends|undepends> [dependency-name]");
+    console.error("Usage: npm run worktree-config <worktree-name> <action> [value]");
+    console.error("");
+    console.error("Actions:");
+    console.error("  pause                     Pause the worktree");
+    console.error("  unpause                   Unpause the worktree");
+    console.error("  remove                    Remove the config entry");
+    console.error("  qa                        Record QA at current bento commit");
+    console.error("  depends <name>            Add a dependency on another worktree");
+    console.error("  undepends [name]          Remove a dependency (or all if no name)");
+    console.error("  provider <cursor|claude|cursor-cli>  Set the agent provider");
     process.exit(1);
   }
 
@@ -50,24 +61,35 @@ async function main() {
       config.qaCommit = await getBentoCommit();
       break;
     case "depends":
-      if (!dependencyName) {
+      if (!argValue) {
         console.error("Usage: npm run worktree-config <worktree-name> depends <dependency-name>");
         process.exit(1);
       }
       config.dependsOn = config.dependsOn ?? [];
-      if (!config.dependsOn.includes(dependencyName)) {
-        config.dependsOn.push(dependencyName);
+      if (!config.dependsOn.includes(argValue)) {
+        config.dependsOn.push(argValue);
       }
       break;
     case "undepends":
-      if (dependencyName) {
-        config.dependsOn = (config.dependsOn ?? []).filter((d) => d !== dependencyName);
+      if (argValue) {
+        config.dependsOn = (config.dependsOn ?? []).filter((d) => d !== argValue);
         if (config.dependsOn.length === 0) {
           delete config.dependsOn;
         }
       } else {
         delete config.dependsOn;
       }
+      break;
+    case "provider":
+      if (!argValue) {
+        console.error(`Usage: npm run worktree-config <worktree-name> provider <${VALID_PROVIDERS.join("|")}>`);
+        process.exit(1);
+      }
+      if (!VALID_PROVIDERS.includes(argValue as AgentProvider)) {
+        console.error(`Invalid provider: ${argValue}. Valid options: ${VALID_PROVIDERS.join(", ")}`);
+        process.exit(1);
+      }
+      config.agentProvider = argValue as AgentProvider;
       break;
   }
 
@@ -81,11 +103,14 @@ async function main() {
       console.log(`${worktreeName}: now depends on ${config.dependsOn?.join(", ")}`);
       break;
     case "undepends":
-      if (dependencyName) {
-        console.log(`${worktreeName}: removed dependency on ${dependencyName}`);
+      if (argValue) {
+        console.log(`${worktreeName}: removed dependency on ${argValue}`);
       } else {
         console.log(`${worktreeName}: all dependencies removed`);
       }
+      break;
+    case "provider":
+      console.log(`${worktreeName}: provider set to ${config.agentProvider}`);
       break;
     default:
       console.log(`${worktreeName}: ${action}d`);

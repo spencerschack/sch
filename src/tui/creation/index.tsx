@@ -4,7 +4,8 @@ import SelectInput from "ink-select-input";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import type { CreationResult } from "./use-creation.js";
-import { baseOptions } from "./use-creation.js";
+import { baseOptions, providerOptions } from "./use-creation.js";
+import type { AgentProvider } from "../../worktree/config.js";
 
 export { useCreation, type CreationResult } from "./use-creation.js";
 
@@ -46,6 +47,19 @@ export function CreationFlow({ creation }: CreationFlowProps) {
           value={creation.description}
           onChange={creation.setDescription}
           onSubmit={creation.submitDescription}
+        />
+      </Box>
+    );
+  }
+
+  if (creation.state === "selectingProvider") {
+    const desc = creation.description.trim().replace(/\s+/g, "-").toLowerCase();
+    return (
+      <Box>
+        <Text>Provider for {creation.base}-{desc}: </Text>
+        <SelectInput
+          items={providerOptions}
+          onSelect={(item) => creation.selectProvider(item.value as AgentProvider)}
         />
       </Box>
     );

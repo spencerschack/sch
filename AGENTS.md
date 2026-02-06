@@ -126,13 +126,23 @@ npm run worktree-next
 
 ## worktree-new
 
-Creates a new worktree based on a special `@` worktree. Handles fetching latest master, rebasing the base worktree, creating the new worktree, running setup, and opening Cursor.
+Creates a new worktree based on a special `@` worktree. Handles fetching latest master, rebasing the base worktree, creating the new worktree, running setup, and launching the agent.
 
 ```
-npm run worktree-new <base> <description>
+npm run worktree-new <base> <description> [--provider <cursor|claude|cursor-cli>]
 ```
 
-Example: `npm run worktree-new sage test-create-recipe-tool`
+Options:
+
+- `--provider` - The coding agent to use (default: cursor)
+  - `cursor` - Opens Cursor IDE (GUI)
+  - `claude` - Starts Claude Code in a TMUX session
+  - `cursor-cli` - Starts Cursor CLI in a TMUX session
+
+Examples:
+
+- `npm run worktree-new sage test-create-recipe-tool`
+- `npm run worktree-new sage my-feature --provider claude`
 
 ## worktree-status
 
@@ -144,13 +154,14 @@ npm run worktree-status
 
 ## worktree-config
 
-Manages worktree configuration stored in `~/worktrees/.worktree-config`. Supports pausing/unpausing worktrees, tracking QA status, and cleaning up config entries. Paused worktrees show a "P" indicator in status and are not considered when running `worktree-next`.
+Manages worktree configuration stored in `~/worktrees/.worktree-config`. Supports pausing/unpausing worktrees, tracking QA status, changing agent provider, and cleaning up config entries. Paused worktrees show a "P" indicator in status and are not considered when running `worktree-next`.
 
 ```
 npm run worktree-config <worktree-name> pause
 npm run worktree-config <worktree-name> unpause
 npm run worktree-config <worktree-name> remove
 npm run worktree-config <worktree-name> qa
+npm run worktree-config <worktree-name> provider <cursor|claude|cursor-cli>
 ```
 
 QA tracking:
@@ -159,6 +170,13 @@ QA tracking:
 - Worktrees without a QA commit are implicitly skipped
 
 The QA column in `worktree-status` shows: `-` (none/skipped), `done` (QA'd at current commit), or `stale` (new commits since QA).
+
+Agent provider:
+
+- `provider` - Sets the coding agent for this worktree
+  - `cursor` - Cursor IDE (GUI, default)
+  - `claude` - Claude Code (TMUX session)
+  - `cursor-cli` - Cursor CLI (TMUX session)
 
 ## worktree-remove
 

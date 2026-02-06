@@ -2,10 +2,13 @@ import { readFile, writeFile } from "node:fs/promises";
 import { CONFIG_PATH } from "./paths.js";
 import { exists } from "../utils.js";
 
+export type AgentProvider = "cursor" | "claude" | "cursor-cli";
+
 export interface WorktreeConfig {
   paused?: boolean;
   qaCommit?: string;
   dependsOn?: string[];
+  agentProvider?: AgentProvider;
 }
 
 export interface AllWorktreeConfigs {

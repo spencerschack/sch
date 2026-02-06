@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { WORKTREES_DIR } from "../worktree/paths.js";
+import { writeWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { execAsync } from "../utils.js";
 
 interface WorktreeConfigDef {
@@ -41,10 +42,17 @@ export interface CreateWorktreeResult {
 }
 
 /**
- * Creates a new worktree without running setup or opening Cursor.
+ * Creates a new worktree without running setup or opening the agent.
  * Used by the TUI to create worktrees programmatically.
+ * @param base - The base worktree type (sage, store, etc.)
+ * @param description - The description for the branch name
+ * @param provider - The agent provider to use (defaults to "cursor")
  */
-export async function createWorktree(base: string, description: string): Promise<CreateWorktreeResult> {
+export async function createWorktree(
+  base: string,
+  description: string,
+  provider: AgentProvider = "cursor"
+): Promise<CreateWorktreeResult> {
   const config = WORKTREE_CONFIGS[base];
   if (!config) {
     throw new Error(`Unknown base worktree: ${base}. Available: ${Object.keys(WORKTREE_CONFIGS).join(", ")}`);
@@ -65,6 +73,11 @@ export async function createWorktree(base: string, description: string): Promise
   await run("git fetch origin master", baseWorktree);
   await run("git rebase origin/master", baseWorktree);
   await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
+
+  // Save the agent provider to the worktree config
+  if (provider !== "cursor") {
+    await writeWorktreeConfig(worktreeName, { agentProvider: provider });
+  }
 
   return { worktreeName, branchName, workingDir };
 }

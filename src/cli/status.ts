@@ -5,6 +5,7 @@ import type { WorktreeInfo } from "../worktree/types.js";
 import { needsAttention } from "../status/attention.js";
 import { openUrl } from "./utils.js";
 import { renderWorktreeTable } from "./render-table.js";
+import { openAgent } from "../agent/provider.js";
 
 async function main() {
   const isNext = process.argv.includes("--next");
@@ -38,9 +39,14 @@ async function main() {
       process.exit(0);
     }
 
-    const url = first.prUrl ?? first.cursorUrl;
-    await openUrl(url);
-    console.log(`Opened: ${url}`);
+    // Open PR if available, otherwise open the agent
+    if (first.prUrl) {
+      await openUrl(first.prUrl);
+      console.log(`Opened: ${first.prUrl}`);
+    } else {
+      await openAgent(first.name);
+      console.log(`Opened agent for: ${first.name}`);
+    }
     process.exit(0);
   }
 

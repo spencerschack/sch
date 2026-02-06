@@ -1,18 +1,21 @@
 import { useState, useCallback } from "react";
 import { createWorktree, WORKTREE_CONFIGS } from "../../lifecycle/create.js";
+import type { AgentProvider } from "../../worktree/config.js";
 
-export type CreationState = "idle" | "selectingBase" | "enteringDescription" | "creating";
+export type CreationState = "idle" | "selectingBase" | "enteringDescription" | "selectingProvider" | "creating";
 
 export interface CreationResult {
   state: CreationState;
   active: boolean;
   base: string;
   description: string;
+  provider: AgentProvider;
   message: string | null;
   start: () => void;
   setDescription: (desc: string) => void;
   selectBase: (base: string) => void;
-  submitDescription: () => Promise<void>;
+  submitDescription: () => void;
+  selectProvider: (provider: AgentProvider) => Promise<void>;
   cancel: () => void;
   handleInput: (input: string, key: { escape?: boolean }) => boolean;
 }
@@ -26,6 +29,7 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
   const [state, setState] = useState<CreationState>("idle");
   const [base, setBase] = useState("");
   const [description, setDescription] = useState("");
+  const [provider, setProvider] = useState<AgentProvider>("cursor");
   const [message, setMessage] = useState<string | null>(null);
 
   const active = state !== "idle";
@@ -34,6 +38,7 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     setState("selectingBase");
     setBase("");
     setDescription("");
+    setProvider("cursor");
     setMessage(null);
   }, []);
 
@@ -43,7 +48,7 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     setState("enteringDescription");
   }, []);
 
-  const submitDescription = useCallback(async () => {
+  const submitDescription = useCallback(() => {
     const desc = description.trim().replace(/\s+/g, "-").toLowerCase();
     if (!desc) {
       const msg = "Description cannot be empty";
@@ -53,10 +58,18 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
       return;
     }
 
+    // Move to provider selection
+    setState("selectingProvider");
+  }, [description, options]);
+
+  const selectProvider = useCallback(async (selectedProvider: AgentProvider) => {
+    setProvider(selectedProvider);
     setState("creating");
 
+    const desc = description.trim().replace(/\s+/g, "-").toLowerCase();
+
     try {
-      const result = await createWorktree(base, desc);
+      const result = await createWorktree(base, desc, selectedProvider);
       const msg = `Created: ${result.worktreeName}`;
       setMessage(msg);
       options.onMessage?.(msg);
@@ -74,6 +87,7 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     setState("idle");
     setBase("");
     setDescription("");
+    setProvider("cursor");
   }, []);
 
   // Handle input - returns true if handled
@@ -93,11 +107,13 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     active,
     base,
     description,
+    provider,
     message,
     start,
     setDescription,
     selectBase,
     submitDescription,
+    selectProvider,
     cancel,
     handleInput,
   };
@@ -107,3 +123,9 @@ export const baseOptions = Object.keys(WORKTREE_CONFIGS).map((key) => ({
   label: key,
   value: key,
 }));
+
+export const providerOptions: Array<{ label: string; value: AgentProvider }> = [
+  { label: "Cursor (GUI)", value: "cursor" },
+  { label: "Claude Code (TMUX)", value: "claude" },
+  { label: "Cursor CLI (TMUX)", value: "cursor-cli" },
+];

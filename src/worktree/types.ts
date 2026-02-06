@@ -1,3 +1,5 @@
+import type { AgentProvider } from "./config.js";
+
 export type GitStatus = "clean" | "changed";
 export type QaStatus = "testing" | "done" | "stale" | "none";
 
@@ -29,7 +31,7 @@ export type PrStatus =
 
 export interface LocalWorktreeInfo {
   name: string;
-  cursorUrl: string;
+  agentProvider: AgentProvider;
   agent: AgentStatusResult;
   git: GitStatusResult;
   paused: boolean;

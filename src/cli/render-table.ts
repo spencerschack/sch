@@ -1,7 +1,8 @@
 import prettyMs from "pretty-ms";
-import type { AgentStatusResult, GitStatusResult, DisplayRow } from "../worktree/types.js";
+import type { AgentStatusResult, GitStatusResult, DisplayRow, WorktreeInfo } from "../worktree/types.js";
 import { isDependencyRef } from "../worktree/types.js";
 import { needsAttention } from "../status/attention.js";
+import { getWorktreeWorkingDir } from "../agent/provider.js";
 
 export function formatAgentStatus(agent: AgentStatusResult): string {
   if (agent.status === "none") return "-";
@@ -12,6 +13,17 @@ export function formatAgentStatus(agent: AgentStatusResult): string {
 
 export function formatGitStatus(git: GitStatusResult): string {
   return git.status === "clean" ? "clean" : `${git.count} changed`;
+}
+
+function getWorktreeUrl(wt: WorktreeInfo): string {
+  // For cursor provider, use cursor:// URL scheme
+  // For TMUX-based providers, just use the working directory path
+  if (wt.agentProvider === "cursor") {
+    const workingDir = getWorktreeWorkingDir(wt.name);
+    return `cursor://file/${workingDir}`;
+  }
+  // For CLI providers, link to the working directory
+  return getWorktreeWorkingDir(wt.name);
 }
 
 export function renderWorktreeTable(rows: DisplayRow[]): void {
@@ -26,7 +38,8 @@ export function renderWorktreeTable(rows: DisplayRow[]): void {
     }
     const wt = row;
     const attention = needsAttention(wt) ? "!" : "";
-    const nameLink = `[${wt.name}](${wt.cursorUrl})`;
+    const url = getWorktreeUrl(wt);
+    const nameLink = `[${wt.name}](${url})`;
     const agentDisplay = formatAgentStatus(wt.agent);
     const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;
     const prStatusDisplay = wt.prUrl ? `[${prLabel}](${wt.prUrl})` : prLabel;
