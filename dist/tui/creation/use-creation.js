@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { createWorktree, WORKTREE_CONFIGS } from "../../lifecycle/create.js";
+import { runTask } from "../tasks/runner.js";
 /**
  * Normalize description: lowercase, replace spaces with dashes, remove punctuation
  */
@@ -41,25 +42,28 @@ export function useCreation(options = {}) {
     }, [description, options]);
     const selectProvider = useCallback(async (selectedProvider) => {
         setProvider(selectedProvider);
-        setState("creating");
-        try {
-            const result = await createWorktree(base, description, {
+        const worktreeName = description;
+        // Run task (fire-and-forget)
+        runTask(async (setStatus) => {
+            setStatus(`Creating ${worktreeName}...`);
+            return await createWorktree(base, description, {
                 provider: selectedProvider,
                 silent: true,
             });
+        })
+            .then((result) => {
             const msg = `Created: ${result.worktreeName}`;
             setMessage(msg);
             options.onMessage?.(msg);
-            await options.onCreated?.();
-        }
-        catch (err) {
+            options.onCreated?.();
+        })
+            .catch((err) => {
             const msg = `Error: ${err instanceof Error ? err.message : "Unknown error"}`;
             setMessage(msg);
             options.onMessage?.(msg);
-        }
-        finally {
-            setState("idle");
-        }
+        });
+        // Return immediately
+        setState("idle");
     }, [base, description, options]);
     const cancel = useCallback(() => {
         setState("idle");

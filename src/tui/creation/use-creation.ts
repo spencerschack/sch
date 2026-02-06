@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { createWorktree, WORKTREE_CONFIGS } from "../../lifecycle/create.js";
 import type { AgentProvider } from "../../worktree/config.js";
+import { runTask } from "../tasks/runner.js";
 
 /**
  * Normalize description: lowercase, replace spaces with dashes, remove punctuation
@@ -73,24 +74,30 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
 
   const selectProvider = useCallback(async (selectedProvider: AgentProvider) => {
     setProvider(selectedProvider);
-    setState("creating");
+    const worktreeName = description;
 
-    try {
-      const result = await createWorktree(base, description, {
+    // Run task (fire-and-forget)
+    runTask(async (setStatus) => {
+      setStatus(`Creating ${worktreeName}...`);
+      return await createWorktree(base, description, {
         provider: selectedProvider,
         silent: true,
       });
-      const msg = `Created: ${result.worktreeName}`;
-      setMessage(msg);
-      options.onMessage?.(msg);
-      await options.onCreated?.();
-    } catch (err) {
-      const msg = `Error: ${err instanceof Error ? err.message : "Unknown error"}`;
-      setMessage(msg);
-      options.onMessage?.(msg);
-    } finally {
-      setState("idle");
-    }
+    })
+      .then((result) => {
+        const msg = `Created: ${result.worktreeName}`;
+        setMessage(msg);
+        options.onMessage?.(msg);
+        options.onCreated?.();
+      })
+      .catch((err) => {
+        const msg = `Error: ${err instanceof Error ? err.message : "Unknown error"}`;
+        setMessage(msg);
+        options.onMessage?.(msg);
+      });
+
+    // Return immediately
+    setState("idle");
   }, [base, description, options]);
 
   const cancel = useCallback(() => {

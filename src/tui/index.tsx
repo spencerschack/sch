@@ -10,6 +10,8 @@ export async function renderTui(): Promise<void> {
     process.exit(1);
   }
   
-  const { waitUntilExit } = render(<WorktreeApp />);
+  const { waitUntilExit } = render(<WorktreeApp />, {
+    exitOnCtrlC: false,
+  });
   await waitUntilExit();
 }

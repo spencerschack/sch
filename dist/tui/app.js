@@ -1,7 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import Spinner from "ink-spinner";
 // Data
 import { useFocused, useWorktreeData } from "./data/index.js";
 // Table
@@ -18,12 +17,31 @@ import { useCreation, CreationFlow } from "./creation/index.js";
 import { useDependencies, DependencyFlow } from "./dependencies/index.js";
 // Footer
 import { Footer } from "./footer.js";
+// Tasks
+import { runTask, useTasks, abortAllTasks, TaskFooter } from "./tasks/index.js";
 export function WorktreeApp() {
     const { exit } = useApp();
     const focused = useFocused();
-    const { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
+    const { worktrees, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
     const [selected, setSelected] = useState(0);
     const [message, setMessage] = useState(null);
+    const [pendingExit, setPendingExit] = useState(false);
+    const tasks = useTasks();
+    // Handle Ctrl+C - immediate exit if no tasks, confirm if tasks running
+    const handleCtrlC = () => {
+        if (tasks.length === 0) {
+            exit();
+        }
+        else if (pendingExit) {
+            abortAllTasks();
+            process.exit(0);
+        }
+        else {
+            setPendingExit(true);
+            setMessage(`${tasks.length} task(s) running. Ctrl+C again to quit.`);
+            setTimeout(() => setPendingExit(false), 3000);
+        }
+    };
     // Clear message after 2 seconds
     useEffect(() => {
         if (message) {
@@ -61,6 +79,11 @@ export function WorktreeApp() {
     });
     // Main input handling - delegates to active modal first
     useInput((input, key) => {
+        // Handle Ctrl+C globally (before any modal handling)
+        if (key.ctrl && input === "c") {
+            handleCtrlC();
+            return;
+        }
         // Delegate to creation flow if active
         if (creation.handleInput(input, key))
             return;
@@ -98,8 +121,11 @@ export function WorktreeApp() {
             handleAssign(selectedWorktree).then((result) => setMessage(result.message));
         }
         if (input === "m" && selectedWorktree) {
-            setMessage(`Merging ${selectedWorktree.name}...`);
-            handleMerge(selectedWorktree).then((result) => {
+            const wt = selectedWorktree;
+            runTask(async (setStatus) => {
+                setStatus(`Merging ${wt.name}...`);
+                return await handleMerge(wt);
+            }).then((result) => {
                 setMessage(result.message);
                 if (result.success)
                     refresh();
@@ -112,9 +138,12 @@ export function WorktreeApp() {
             });
         }
         if (input === "q" && selectedWorktree) {
-            const action = selectedWorktree.qaStatus === "done" ? "Clearing" : "Processing";
-            setMessage(`${action} QA for ${selectedWorktree.name}...`);
-            handleQa(selectedWorktree).then((result) => {
+            const wt = selectedWorktree;
+            const action = wt.qaStatus === "done" ? "Clearing" : "Processing";
+            runTask(async (setStatus) => {
+                setStatus(`${action} QA for ${wt.name}...`);
+                return await handleQa(wt);
+            }).then((result) => {
                 setMessage(result.message);
                 refreshLocal();
             });
@@ -129,12 +158,9 @@ export function WorktreeApp() {
             dependencies.start();
         }
     });
-    // Initial loading state
-    if (worktrees.length === 0 && loading) {
-        return (_jsxs(Box, { children: [_jsx(Text, { color: "cyan", children: _jsx(Spinner, { type: "dots" }) }), _jsx(Text, { children: " Loading worktrees..." })] }));
-    }
-    if (worktrees.length === 0 && !loading) {
-        return (_jsx(Box, { flexDirection: "column", children: _jsx(Text, { children: "No worktrees found" }) }));
+    // No worktrees - show TaskFooter if tasks running (initial load)
+    if (worktrees.length === 0) {
+        return (_jsx(Box, { flexDirection: "column", children: tasks.length === 0 ? (_jsx(Text, { children: "No worktrees found" })) : (_jsx(TaskFooter, {})) }));
     }
     // Render footer or modal input
     const renderFooterOrInput = () => {
@@ -147,7 +173,7 @@ export function WorktreeApp() {
         if (deleteConfirm.active) {
             return _jsx(DeletionFlow, { deletion: deleteConfirm });
         }
-        return (_jsx(Footer, { refreshing: loading, message: message, focused: focused, showAssign: showAssign, showMerge: showMerge }));
+        return (_jsx(Footer, { message: message, focused: focused, showAssign: showAssign, showMerge: showMerge }));
     };
-    return (_jsxs(Box, { flexDirection: "column", children: [_jsx(WorktreeTable, { worktrees: worktrees, selected: selected, lastRemoteRefresh: lastRemoteRefresh }), renderFooterOrInput()] }));
+    return (_jsxs(Box, { flexDirection: "column", children: [_jsx(WorktreeTable, { worktrees: worktrees, selected: selected, lastRemoteRefresh: lastRemoteRefresh }), renderFooterOrInput(), _jsx(TaskFooter, {})] }));
 }

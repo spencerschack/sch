@@ -8,6 +8,8 @@ export async function renderTui() {
         console.error("Run this command in a terminal that supports raw input.");
         process.exit(1);
     }
-    const { waitUntilExit } = render(_jsx(WorktreeApp, {}));
+    const { waitUntilExit } = render(_jsx(WorktreeApp, {}), {
+        exitOnCtrlC: false,
+    });
     await waitUntilExit();
 }

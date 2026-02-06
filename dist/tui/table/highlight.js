@@ -21,7 +21,7 @@ export function getHighlightColumn(wt) {
         return "git";
     }
     // Priority 6: PR is busy/running (positive status)
-    if (wt.prStatus === "loading" || wt.prStatus === "running" || wt.prStatus === "queued" || wt.prStatus === "approved" || wt.prStatus === "waiting") {
+    if (wt.prStatus === "loading" || wt.prStatus === "running" || wt.prStatus === "queued" || wt.prStatus === "merging" || wt.prStatus === "approved" || wt.prStatus === "waiting") {
         return "pr";
     }
     // Priority 7: Agent is active

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import Spinner from "ink-spinner";
 
 // Data
 import { useFocused, useWorktreeData } from "./data/index.js";
@@ -26,12 +25,31 @@ import { useDependencies, DependencyFlow } from "./dependencies/index.js";
 // Footer
 import { Footer } from "./footer.js";
 
+// Tasks
+import { runTask, useTasks, abortAllTasks, TaskFooter } from "./tasks/index.js";
+
 export function WorktreeApp() {
   const { exit } = useApp();
   const focused = useFocused();
-  const { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
+  const { worktrees, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingExit, setPendingExit] = useState(false);
+  const tasks = useTasks();
+
+  // Handle Ctrl+C - immediate exit if no tasks, confirm if tasks running
+  const handleCtrlC = () => {
+    if (tasks.length === 0) {
+      exit();
+    } else if (pendingExit) {
+      abortAllTasks();
+      process.exit(0);
+    } else {
+      setPendingExit(true);
+      setMessage(`${tasks.length} task(s) running. Ctrl+C again to quit.`);
+      setTimeout(() => setPendingExit(false), 3000);
+    }
+  };
 
   // Clear message after 2 seconds
   useEffect(() => {
@@ -76,6 +94,12 @@ export function WorktreeApp() {
 
   // Main input handling - delegates to active modal first
   useInput((input, key) => {
+    // Handle Ctrl+C globally (before any modal handling)
+    if (key.ctrl && input === "c") {
+      handleCtrlC();
+      return;
+    }
+
     // Delegate to creation flow if active
     if (creation.handleInput(input, key)) return;
 
@@ -115,8 +139,11 @@ export function WorktreeApp() {
       handleAssign(selectedWorktree).then((result) => setMessage(result.message));
     }
     if (input === "m" && selectedWorktree) {
-      setMessage(`Merging ${selectedWorktree.name}...`);
-      handleMerge(selectedWorktree).then((result) => {
+      const wt = selectedWorktree;
+      runTask(async (setStatus) => {
+        setStatus(`Merging ${wt.name}...`);
+        return await handleMerge(wt);
+      }).then((result) => {
         setMessage(result.message);
         if (result.success) refresh();
       });
@@ -128,9 +155,12 @@ export function WorktreeApp() {
       });
     }
     if (input === "q" && selectedWorktree) {
-      const action = selectedWorktree.qaStatus === "done" ? "Clearing" : "Processing";
-      setMessage(`${action} QA for ${selectedWorktree.name}...`);
-      handleQa(selectedWorktree).then((result) => {
+      const wt = selectedWorktree;
+      const action = wt.qaStatus === "done" ? "Clearing" : "Processing";
+      runTask(async (setStatus) => {
+        setStatus(`${action} QA for ${wt.name}...`);
+        return await handleQa(wt);
+      }).then((result) => {
         setMessage(result.message);
         refreshLocal();
       });
@@ -146,20 +176,15 @@ export function WorktreeApp() {
     }
   });
 
-  // Initial loading state
-  if (worktrees.length === 0 && loading) {
-    return (
-      <Box>
-        <Text color="cyan"><Spinner type="dots" /></Text>
-        <Text> Loading worktrees...</Text>
-      </Box>
-    );
-  }
-
-  if (worktrees.length === 0 && !loading) {
+  // No worktrees - show TaskFooter if tasks running (initial load)
+  if (worktrees.length === 0) {
     return (
       <Box flexDirection="column">
-        <Text>No worktrees found</Text>
+        {tasks.length === 0 ? (
+          <Text>No worktrees found</Text>
+        ) : (
+          <TaskFooter />
+        )}
       </Box>
     );
   }
@@ -180,7 +205,6 @@ export function WorktreeApp() {
 
     return (
       <Footer
-        refreshing={loading}
         message={message}
         focused={focused}
         showAssign={showAssign}
@@ -193,6 +217,7 @@ export function WorktreeApp() {
     <Box flexDirection="column">
       <WorktreeTable worktrees={worktrees} selected={selected} lastRemoteRefresh={lastRemoteRefresh} />
       {renderFooterOrInput()}
+      <TaskFooter />
     </Box>
   );
 }

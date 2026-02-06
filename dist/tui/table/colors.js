@@ -13,6 +13,7 @@ export function getStatusColor(status) {
         case "running":
             return "greenBright";
         case "queued":
+        case "merging":
             return "cyan";
         case "waiting":
         case "assign":

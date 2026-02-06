@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { removeWorktreeFull } from "../../lifecycle/remove.js";
+import { runTask } from "../tasks/runner.js";
 export function useDeleteConfirm(options = {}) {
     const [state, setState] = useState("idle");
     const [worktree, setWorktree] = useState(null);
@@ -7,20 +8,18 @@ export function useDeleteConfirm(options = {}) {
     const start = useCallback((wt) => {
         // If PR is merged, no confirmation needed - delete immediately
         if (wt.prStatus === "merged") {
-            setWorktree(wt);
-            setState("deleting");
-            removeWorktreeFull(wt.name)
+            const name = wt.name;
+            runTask(async (setStatus) => {
+                setStatus(`Deleting ${name}...`);
+                await removeWorktreeFull(name);
+            })
                 .then(() => {
-                options.onComplete?.({ success: true, message: `Removed: ${wt.name}` });
+                options.onComplete?.({ success: true, message: `Removed: ${name}` });
                 options.onRefresh?.();
             })
                 .catch((err) => {
                 const msg = err instanceof Error ? err.message : String(err);
                 options.onComplete?.({ success: false, message: `Failed to remove: ${msg}` });
-            })
-                .finally(() => {
-                setState("idle");
-                setWorktree(null);
             });
             return;
         }
@@ -32,24 +31,23 @@ export function useDeleteConfirm(options = {}) {
         if (!worktree) {
             return { success: false, message: "No worktree selected" };
         }
-        setState("deleting");
-        try {
-            await removeWorktreeFull(worktree.name);
-            const result = { success: true, message: `Removed: ${worktree.name}` };
-            setState("idle");
-            setWorktree(null);
-            options.onComplete?.(result);
+        const name = worktree.name;
+        // Run delete task (fire-and-forget)
+        runTask(async (setStatus) => {
+            setStatus(`Deleting ${name}...`);
+            await removeWorktreeFull(name);
+        })
+            .then(() => {
+            options.onComplete?.({ success: true, message: `Removed: ${name}` });
             options.onRefresh?.();
-            return result;
-        }
-        catch (error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            const result = { success: false, message: `Failed to remove: ${msg}` };
-            setState("idle");
-            setWorktree(null);
-            options.onComplete?.(result);
-            return result;
-        }
+        })
+            .catch((err) => {
+            const msg = err instanceof Error ? err.message : String(err);
+            options.onComplete?.({ success: false, message: `Failed to remove: ${msg}` });
+        });
+        setState("idle");
+        setWorktree(null);
+        return { success: true, message: `Deleting ${name}...` };
     }, [worktree, options]);
     const cancel = useCallback(() => {
         setState("idle");

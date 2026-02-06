@@ -3,13 +3,13 @@ import type { LocalWorktreeInfo, RemoteWorktreeInfo, WorktreeInfo } from "../../
 import { fetchAllLocalWorktreeInfo } from "../../data/local.js";
 import { fetchAllRemoteWorktreeInfo } from "../../data/remote.js";
 import { mergeWorktreeData, sortWorktrees } from "../../data/merge.js";
+import { runTask } from "../tasks/runner.js";
 
 const LOCAL_REFRESH_INTERVAL = 5000; // 5 seconds
 const REMOTE_REFRESH_INTERVAL = 60000; // 1 minute
 
 export interface WorktreeDataResult {
   worktrees: WorktreeInfo[];
-  loading: boolean;
   lastRemoteRefresh: Date | null;
   refresh: () => Promise<void>;
   refreshLocal: () => Promise<LocalWorktreeInfo[]>;
@@ -18,7 +18,6 @@ export interface WorktreeDataResult {
 export function useWorktreeData(paused: boolean): WorktreeDataResult {
   const [localData, setLocalData] = useState<LocalWorktreeInfo[]>([]);
   const [remoteData, setRemoteData] = useState<Map<string, RemoteWorktreeInfo>>(new Map());
-  const [loading, setLoading] = useState(true);
   const [lastRemoteRefresh, setLastRemoteRefresh] = useState<Date | null>(null);
 
   const refreshLocal = useCallback(async () => {
@@ -35,14 +34,15 @@ export function useWorktreeData(paused: boolean): WorktreeDataResult {
   }, []);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const local = await refreshLocal();
-      await refreshRemote(local.map((l) => l.name));
-    } finally {
-      setLoading(false);
-    }
-  }, [refreshLocal, refreshRemote]);
+    await runTask(async (setStatus) => {
+      setStatus("Refreshing...");
+      const local = await fetchAllLocalWorktreeInfo();
+      setLocalData(local);
+      const remote = await fetchAllRemoteWorktreeInfo(local.map((l) => l.name));
+      setRemoteData(remote);
+      setLastRemoteRefresh(new Date());
+    });
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -80,5 +80,5 @@ export function useWorktreeData(paused: boolean): WorktreeDataResult {
     return sortWorktrees(merged);
   }, [localData, remoteData]);
 
-  return { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal };
+  return { worktrees, lastRemoteRefresh, refresh, refreshLocal };
 }

@@ -2,14 +2,13 @@ import React from "react";
 import { Box, Text } from "ink";
 
 interface FooterProps {
-  refreshing: boolean;
   message: string | null;
   focused: boolean;
   showAssign: boolean;
   showMerge: boolean;
 }
 
-export function Footer({ refreshing, message, focused, showAssign, showMerge }: FooterProps) {
+export function Footer({ message, focused, showAssign, showMerge }: FooterProps) {
   return (
     <Box flexDirection="column">
       <Text dimColor>
@@ -26,8 +25,6 @@ export function Footer({ refreshing, message, focused, showAssign, showMerge }: 
       </Text>
       {message ? (
         <Text color="green">{message}</Text>
-      ) : refreshing ? (
-        <Text color="cyan">Refreshing...</Text>
       ) : !focused ? (
         <Text color="yellow">Paused (unfocused)</Text>
       ) : null}

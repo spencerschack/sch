@@ -1,5 +1,5 @@
 export function isBusyStatus(status) {
-    return status === "loading" || status === "frozen" || status === "running" || status === "queued" || status === "waiting";
+    return status === "loading" || status === "frozen" || status === "running" || status === "queued" || status === "merging" || status === "waiting";
 }
 export function needsAttention(wt) {
     if (wt.paused || wt.blocked)
@@ -25,6 +25,7 @@ export function getPrPriority(status) {
         case "running": return 9;
         case "loading": return 9;
         case "merged": return 10;
+        case "merging": return 10;
         case "queued": return 10;
         case "closed": return 11;
     }
