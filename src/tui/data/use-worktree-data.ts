@@ -19,6 +19,7 @@ export function useWorktreeData(paused: boolean): WorktreeDataResult {
   const [localData, setLocalData] = useState<LocalWorktreeInfo[]>([]);
   const [remoteData, setRemoteData] = useState<Map<string, RemoteWorktreeInfo>>(new Map());
   const [lastRemoteRefresh, setLastRemoteRefresh] = useState<Date | null>(null);
+  const refreshingRef = useRef(false);
 
   const refreshLocal = useCallback(async () => {
     const local = await fetchAllLocalWorktreeInfo();
@@ -34,14 +35,20 @@ export function useWorktreeData(paused: boolean): WorktreeDataResult {
   }, []);
 
   const refresh = useCallback(async () => {
-    await runTask(async (setStatus) => {
-      setStatus("Refreshing...");
-      const local = await fetchAllLocalWorktreeInfo();
-      setLocalData(local);
-      const remote = await fetchAllRemoteWorktreeInfo(local.map((l) => l.name));
-      setRemoteData(remote);
-      setLastRemoteRefresh(new Date());
-    });
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    try {
+      await runTask(async (setStatus) => {
+        setStatus("Refreshing...");
+        const local = await fetchAllLocalWorktreeInfo();
+        setLocalData(local);
+        const remote = await fetchAllRemoteWorktreeInfo(local.map((l) => l.name));
+        setRemoteData(remote);
+        setLastRemoteRefresh(new Date());
+      });
+    } finally {
+      refreshingRef.current = false;
+    }
   }, []);
 
   // Initial load
