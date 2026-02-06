@@ -71,7 +71,7 @@ export async function openAgent(worktreeName: string): Promise<void> {
     case "cursor-cli": {
       // Determine the agent command based on provider
       const agentCmd = provider === "claude" ? "claude" : "cursor agent chat";
-      // Run tmux directly - it will take over the current terminal
+      // Run tmux directly - takes over the current terminal
       spawnSync("tmux", ["new-session", "-As", worktreeName, "-c", workingDir, agentCmd], {
         stdio: "inherit",
       });

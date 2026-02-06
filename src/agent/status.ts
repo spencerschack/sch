@@ -2,23 +2,11 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { CURSOR_PROJECTS_DIR, CLAUDE_PROJECTS_DIR } from "../worktree/paths.js";
 import { readWorktreeConfig } from "../worktree/config.js";
-import { exists, execAsync } from "../utils.js";
+import { exists } from "../utils.js";
 import type { AgentStatusResult } from "../worktree/types.js";
 import { getWorktreeWorkingDir } from "./provider.js";
 
 const IDLE_THRESHOLD_SECONDS = 30;
-
-/**
- * Check if a TMUX session is running for the given worktree.
- */
-export async function isTmuxSessionRunning(worktreeName: string): Promise<boolean> {
-  try {
-    await execAsync(`tmux has-session -t "${worktreeName}" 2>/dev/null`);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Get the encoded project path for Claude Code.
@@ -76,6 +64,7 @@ async function getCursorAgentStatus(worktreeName: string): Promise<AgentStatusRe
 
 /**
  * Check agent status for Claude Code.
+ * Only reports status based on Claude's project files, not tmux session existence.
  */
 async function getClaudeAgentStatus(worktreeName: string): Promise<AgentStatusResult> {
   if (!(await exists(CLAUDE_PROJECTS_DIR))) {
@@ -87,10 +76,6 @@ async function getClaudeAgentStatus(worktreeName: string): Promise<AgentStatusRe
   const match = projects.find((p) => p === encodedPath || p.includes(encodedPath));
   
   if (!match) {
-    // Fall back to checking if TMUX session is running
-    if (await isTmuxSessionRunning(worktreeName)) {
-      return { status: "active", age: 0 };
-    }
     return { status: "none", age: 999999 };
   }
 
@@ -107,9 +92,6 @@ async function getClaudeAgentStatus(worktreeName: string): Promise<AgentStatusRe
   files.sort((a, b) => b.mtime - a.mtime);
 
   if (files.length === 0) {
-    if (await isTmuxSessionRunning(worktreeName)) {
-      return { status: "active", age: 0 };
-    }
     return { status: "none", age: 999999 };
   }
 
@@ -118,11 +100,6 @@ async function getClaudeAgentStatus(worktreeName: string): Promise<AgentStatusRe
 
   if (age < IDLE_THRESHOLD_SECONDS) {
     return { status: "active", age };
-  }
-
-  // Check if TMUX session is still running for idle detection
-  if (await isTmuxSessionRunning(worktreeName)) {
-    return { status: "idle", age };
   }
 
   return { status: "idle", age };
@@ -140,13 +117,8 @@ export async function getAgentStatus(worktreeName: string): Promise<AgentStatusR
     case "cursor":
       return getCursorAgentStatus(worktreeName);
     case "cursor-cli":
-      // Cursor CLI still uses Cursor's project directory for transcripts
-      const cursorStatus = await getCursorAgentStatus(worktreeName);
-      // Also check TMUX session for active status
-      if (cursorStatus.status === "none" && await isTmuxSessionRunning(worktreeName)) {
-        return { status: "active", age: 0 };
-      }
-      return cursorStatus;
+      // Cursor CLI uses Cursor's project directory for transcripts
+      return getCursorAgentStatus(worktreeName);
     case "claude":
       return getClaudeAgentStatus(worktreeName);
   }
