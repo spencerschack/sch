@@ -27,7 +27,7 @@ export function mergeWorktreeData(local, remote) {
 }
 export function sortWorktrees(worktrees) {
     // Sort all worktrees: active > blocked > paused, then by attention/PR status
-    const sorted = [...worktrees].sort((a, b) => {
+    return [...worktrees].sort((a, b) => {
         const aPriority = getStatusPriority(a);
         const bPriority = getStatusPriority(b);
         if (aPriority !== bPriority) {
@@ -40,20 +40,6 @@ export function sortWorktrees(worktrees) {
         }
         return getPrPriority(a.prStatus) - getPrPriority(b.prStatus);
     });
-    // Insert dependency refs after worktrees that have dependencies
-    const result = [];
-    for (const wt of sorted) {
-        result.push(wt);
-        // Add dependency refs for each dependency
-        for (const dep of wt.dependsOn) {
-            result.push({
-                type: "dependency",
-                name: dep,
-                dependentName: wt.name,
-            });
-        }
-    }
-    return result;
 }
 export async function processWorktree(entry, bentoCommit) {
     const local = await fetchLocalWorktreeInfo(entry, bentoCommit);

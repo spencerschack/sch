@@ -1,7 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { WORKTREES_DIR } from "../worktree/paths.js";
-import type { LocalWorktreeInfo, RemoteWorktreeInfo, WorktreeInfo, DisplayRow } from "../worktree/types.js";
-import { isDependencyRef } from "../worktree/types.js";
+import type { LocalWorktreeInfo, RemoteWorktreeInfo, WorktreeInfo } from "../worktree/types.js";
 import { exists } from "../utils.js";
 import { getBentoCommit } from "../git.js";
 import { needsAttention, getPrPriority, getStatusPriority } from "../status/attention.js";
@@ -35,9 +34,9 @@ export function mergeWorktreeData(
   });
 }
 
-export function sortWorktrees(worktrees: WorktreeInfo[]): DisplayRow[] {
+export function sortWorktrees(worktrees: WorktreeInfo[]): WorktreeInfo[] {
   // Sort all worktrees: active > blocked > paused, then by attention/PR status
-  const sorted = [...worktrees].sort((a, b) => {
+  return [...worktrees].sort((a, b) => {
     const aPriority = getStatusPriority(a);
     const bPriority = getStatusPriority(b);
     if (aPriority !== bPriority) {
@@ -50,23 +49,6 @@ export function sortWorktrees(worktrees: WorktreeInfo[]): DisplayRow[] {
     }
     return getPrPriority(a.prStatus) - getPrPriority(b.prStatus);
   });
-
-  // Insert dependency refs after worktrees that have dependencies
-  const result: DisplayRow[] = [];
-
-  for (const wt of sorted) {
-    result.push(wt);
-    // Add dependency refs for each dependency
-    for (const dep of wt.dependsOn) {
-      result.push({
-        type: "dependency",
-        name: dep,
-        dependentName: wt.name,
-      });
-    }
-  }
-
-  return result;
 }
 
 export async function processWorktree(entry: string, bentoCommit: string): Promise<WorktreeInfo | null> {
@@ -77,7 +59,7 @@ export async function processWorktree(entry: string, bentoCommit: string): Promi
   return { ...local, ...remote };
 }
 
-export async function fetchWorktrees(): Promise<DisplayRow[]> {
+export async function fetchWorktrees(): Promise<WorktreeInfo[]> {
   if (!(await exists(WORKTREES_DIR))) {
     return [];
   }

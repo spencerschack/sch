@@ -1,5 +1,4 @@
 import prettyMs from "pretty-ms";
-import { isDependencyRef } from "../worktree/types.js";
 import { needsAttention, getDependencyStatusSummary } from "../status/index.js";
 import { getWorktreeWorkingDir } from "../agent/provider.js";
 export function formatAgentStatus(agent) {
@@ -41,24 +40,15 @@ function formatDeployStatus(status) {
             return "-";
     }
 }
-export async function renderWorktreeTable(rows) {
+export async function renderWorktreeTable(worktrees) {
     // Build a map for dependency lookups
     const worktreeMap = new Map();
-    for (const row of rows) {
-        if (!isDependencyRef(row)) {
-            worktreeMap.set(row.name, row);
-        }
+    for (const wt of worktrees) {
+        worktreeMap.set(wt.name, wt);
     }
     console.log("| | Worktree | Agent | Git | QA | PR | Deploy |");
     console.log("| --- | --- | --- | --- | --- | --- | --- |");
-    for (const row of rows) {
-        if (isDependencyRef(row)) {
-            const depInfo = worktreeMap.get(row.name);
-            const { text: statusSummary } = getDependencyStatusSummary(depInfo);
-            console.log(`|  | └─ ${row.name} (${statusSummary}) |  |  |  |  |  |`);
-            continue;
-        }
-        const wt = row;
+    for (const wt of worktrees) {
         const attention = needsAttention(wt) ? "!" : "";
         const url = await getWorktreeUrl(wt);
         const nameLink = `[${wt.name}](${url})`;
@@ -68,5 +58,11 @@ export async function renderWorktreeTable(rows) {
         const qaDisplay = wt.qaStatus === "none" ? "-" : wt.qaStatus;
         const deployDisplay = formatDeployStatus(wt.deployStatus);
         console.log(`| ${attention} | ${nameLink} | ${agentDisplay} | ${formatGitStatus(wt.git)} | ${qaDisplay} | ${prStatusDisplay} | ${deployDisplay} |`);
+        // Render dependency refs after each worktree
+        for (const dep of wt.dependsOn) {
+            const depInfo = worktreeMap.get(dep);
+            const { text: statusSummary } = getDependencyStatusSummary(depInfo);
+            console.log(`|  | └─ ${dep} (${statusSummary}) |  |  |  |  |  |`);
+        }
     }
 }

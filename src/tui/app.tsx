@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
-import { isDependencyRef } from "../worktree/types.js";
-import type { WorktreeInfo } from "../worktree/types.js";
 
 // Data
 import { useFocused, useWorktreeData } from "./data/index.js";
@@ -31,7 +29,7 @@ import { Footer } from "./footer.js";
 export function WorktreeApp() {
   const { exit } = useApp();
   const focused = useFocused();
-  const { data, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
+  const { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -43,37 +41,15 @@ export function WorktreeApp() {
     }
   }, [message]);
 
-  // Helper to find next selectable index (skipping dependency refs)
-  const findNextSelectable = useCallback((from: number, direction: 1 | -1): number => {
-    let next = from + direction;
-    while (next >= 0 && next < data.length) {
-      if (!isDependencyRef(data[next])) {
-        return next;
-      }
-      next += direction;
-    }
-    return from; // Stay at current if no selectable found
-  }, [data]);
-
-  // Get all selectable indices
-  const selectableIndices = useMemo(() => 
-    data.map((row, i) => isDependencyRef(row) ? -1 : i).filter(i => i >= 0),
-    [data]
-  );
-
-  // Keep selection in bounds and on a selectable row
+  // Keep selection in bounds
   useEffect(() => {
-    if (selectableIndices.length === 0) return;
-    if (!selectableIndices.includes(selected)) {
-      const firstSelectable = selectableIndices[0];
-      setSelected(firstSelectable);
-    } else if (selected >= data.length) {
-      setSelected(selectableIndices[selectableIndices.length - 1]);
+    if (worktrees.length === 0) return;
+    if (selected >= worktrees.length) {
+      setSelected(worktrees.length - 1);
     }
-  }, [data.length, selected, selectableIndices]);
+  }, [worktrees.length, selected]);
 
-  const selectedRow = data[selected];
-  const selectedWorktree = selectedRow && !isDependencyRef(selectedRow) ? selectedRow : null;
+  const selectedWorktree = worktrees[selected] ?? null;
 
   const showAssign = selectedWorktree?.prStatus === "assign";
   const showMerge = selectedWorktree?.prStatus === "approved";
@@ -87,7 +63,7 @@ export function WorktreeApp() {
   // Dependencies flow
   const dependencies = useDependencies({
     selectedWorktree,
-    allData: data,
+    worktrees,
     onMessage: setMessage,
     onComplete: refreshLocal,
   });
@@ -117,10 +93,10 @@ export function WorktreeApp() {
 
     // Navigation
     if (key.upArrow || input === "k") {
-      setSelected((i) => findNextSelectable(i, -1));
+      setSelected((i) => Math.max(0, i - 1));
     }
     if (key.downArrow || input === "j") {
-      setSelected((i) => findNextSelectable(i, 1));
+      setSelected((i) => Math.min(worktrees.length - 1, i + 1));
     }
 
     // Actions
@@ -171,7 +147,7 @@ export function WorktreeApp() {
   });
 
   // Initial loading state
-  if (data.length === 0 && loading) {
+  if (worktrees.length === 0 && loading) {
     return (
       <Box>
         <Text color="cyan"><Spinner type="dots" /></Text>
@@ -180,7 +156,7 @@ export function WorktreeApp() {
     );
   }
 
-  if (data.length === 0 && !loading) {
+  if (worktrees.length === 0 && !loading) {
     return (
       <Box flexDirection="column">
         <Text>No worktrees found</Text>
@@ -215,7 +191,7 @@ export function WorktreeApp() {
 
   return (
     <Box flexDirection="column">
-      <WorktreeTable data={data} selected={selected} lastRemoteRefresh={lastRemoteRefresh} />
+      <WorktreeTable worktrees={worktrees} selected={selected} lastRemoteRefresh={lastRemoteRefresh} />
       {renderFooterOrInput()}
     </Box>
   );

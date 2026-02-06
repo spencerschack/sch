@@ -1,6 +1,4 @@
 import { fetchWorktrees } from "../data/merge.js";
-import { isDependencyRef } from "../worktree/types.js";
-import type { WorktreeInfo } from "../worktree/types.js";
 import { needsAttention } from "../status/attention.js";
 import { openUrl } from "./utils.js";
 import { renderWorktreeTable } from "./render-table.js";
@@ -24,7 +22,7 @@ export async function main(args: string[] = process.argv.slice(2)) {
   }
 
   if (isNext) {
-    const first = worktrees.find((row): row is WorktreeInfo => !isDependencyRef(row) && needsAttention(row));
+    const first = worktrees.find((wt) => needsAttention(wt));
     if (!first) {
       console.log("No worktrees need attention");
       process.exit(0);

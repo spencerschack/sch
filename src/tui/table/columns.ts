@@ -1,8 +1,6 @@
-import type { WorktreeInfo, DisplayRow } from "../../worktree/types.js";
-import { isDependencyRef } from "../../worktree/types.js";
+import type { WorktreeInfo } from "../../worktree/types.js";
 import { formatAgentStatus, formatGitStatus } from "../../cli/render-table.js";
 import { needsAttention } from "../../status/attention.js";
-import { getDependencyStatusSummary } from "../../status/summary.js";
 
 export interface ColumnWidths {
   name: number;
@@ -54,7 +52,7 @@ export function getRowData(wt: WorktreeInfo): RowData {
   return { attention, name: wt.name, agent, git, qa, pr, deploy, needsAttention: wtNeedsAttention };
 }
 
-export function computeColumnWidths(data: DisplayRow[]): ColumnWidths {
+export function computeColumnWidths(worktrees: WorktreeInfo[]): ColumnWidths {
   const widths: ColumnWidths = {
     name: "Worktree".length,
     agent: "Agent".length,
@@ -64,25 +62,8 @@ export function computeColumnWidths(data: DisplayRow[]): ColumnWidths {
     deploy: "Deploy".length,
   };
 
-  // Build a map for dependency lookups
-  const worktreeMap = new Map<string, WorktreeInfo>();
-  for (const item of data) {
-    if (!isDependencyRef(item)) {
-      worktreeMap.set(item.name, item);
-    }
-  }
-
-  for (const item of data) {
-    if (isDependencyRef(item)) {
-      // Dependency refs have "└─ name (status)" format
-      const depInfo = worktreeMap.get(item.name);
-      const { text: statusText } = getDependencyStatusSummary(depInfo);
-      // "└─ " (3) + name + " (" (2) + status + ")" (1)
-      const fullLength = 3 + item.name.length + 2 + statusText.length + 1;
-      widths.name = Math.max(widths.name, fullLength);
-      continue;
-    }
-    const row = getRowData(item);
+  for (const wt of worktrees) {
+    const row = getRowData(wt);
     widths.name = Math.max(widths.name, row.name.length);
     widths.agent = Math.max(widths.agent, row.agent.length);
     widths.git = Math.max(widths.git, row.git.length);

@@ -9,37 +9,26 @@ export function useWorktreeData(paused) {
     const [remoteData, setRemoteData] = useState(new Map());
     const [loading, setLoading] = useState(true);
     const [lastRemoteRefresh, setLastRemoteRefresh] = useState(null);
-    // Track if component is mounted to avoid state updates after unmount
-    const mountedRef = useRef(true);
-    useEffect(() => {
-        mountedRef.current = true;
-        return () => { mountedRef.current = false; };
-    }, []);
     const refreshLocal = useCallback(async () => {
         const local = await fetchAllLocalWorktreeInfo();
-        if (mountedRef.current)
-            setLocalData(local);
+        setLocalData(local);
         return local;
     }, []);
     const refreshRemote = useCallback(async (names) => {
         if (names.length === 0)
             return;
         const remote = await fetchAllRemoteWorktreeInfo(names);
-        if (mountedRef.current) {
-            setRemoteData(remote);
-            setLastRemoteRefresh(new Date());
-        }
+        setRemoteData(remote);
+        setLastRemoteRefresh(new Date());
     }, []);
     const refresh = useCallback(async () => {
-        if (mountedRef.current)
-            setLoading(true);
+        setLoading(true);
         try {
             const local = await refreshLocal();
             await refreshRemote(local.map((l) => l.name));
         }
         finally {
-            if (mountedRef.current)
-                setLoading(false);
+            setLoading(false);
         }
     }, [refreshLocal, refreshRemote]);
     // Initial load
@@ -72,9 +61,9 @@ export function useWorktreeData(paused) {
         prevPaused.current = paused;
     }, [paused, refresh]);
     // Merge local and remote data
-    const data = useMemo(() => {
+    const worktrees = useMemo(() => {
         const merged = mergeWorktreeData(localData, remoteData);
         return sortWorktrees(merged);
     }, [localData, remoteData]);
-    return { data, loading, lastRemoteRefresh, refresh, refreshLocal };
+    return { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal };
 }

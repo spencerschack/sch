@@ -1,9 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
-import { isDependencyRef } from "../../worktree/types.js";
 import { readWorktreeConfig, writeWorktreeConfig } from "../../worktree/config.js";
 export function useDependencies(options) {
     const [active, setActive] = useState(false);
-    const { selectedWorktree, allData, onMessage, onComplete } = options;
+    const { selectedWorktree, worktrees, onMessage, onComplete } = options;
     const start = useCallback(() => {
         if (!selectedWorktree)
             return;
@@ -40,11 +39,10 @@ export function useDependencies(options) {
     // Build options list (all worktrees except current, with checkmarks)
     const currentDeps = selectedWorktree?.dependsOn ?? [];
     const options_list = useMemo(() => {
-        const existingWorktrees = allData
-            .filter((row) => !isDependencyRef(row) && row.name !== selectedWorktree?.name);
-        const existingNames = new Set(existingWorktrees.map((wt) => wt.name));
+        const otherWorktrees = worktrees.filter((wt) => wt.name !== selectedWorktree?.name);
+        const existingNames = new Set(otherWorktrees.map((wt) => wt.name));
         // Options for existing worktrees
-        const existingOptions = existingWorktrees.map((wt) => {
+        const existingOptions = otherWorktrees.map((wt) => {
             const isSelected = currentDeps.includes(wt.name);
             return { label: `${isSelected ? "✓ " : "  "}${wt.name}`, value: wt.name };
         });
@@ -53,7 +51,7 @@ export function useDependencies(options) {
             .filter((dep) => !existingNames.has(dep))
             .map((dep) => ({ label: `✓ ${dep} (missing)`, value: dep }));
         return [...staleOptions, ...existingOptions];
-    }, [allData, selectedWorktree?.name, currentDeps]);
+    }, [worktrees, selectedWorktree?.name, currentDeps]);
     // Handle input - returns true if handled (consumes all input when active)
     const handleInput = useCallback((input, key) => {
         if (!active)

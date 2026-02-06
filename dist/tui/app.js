@@ -1,8 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
-import { isDependencyRef } from "../worktree/types.js";
 // Data
 import { useFocused, useWorktreeData } from "./data/index.js";
 // Table
@@ -22,7 +21,7 @@ import { Footer } from "./footer.js";
 export function WorktreeApp() {
     const { exit } = useApp();
     const focused = useFocused();
-    const { data, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
+    const { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal } = useWorktreeData(!focused);
     const [selected, setSelected] = useState(0);
     const [message, setMessage] = useState(null);
     // Clear message after 2 seconds
@@ -32,33 +31,15 @@ export function WorktreeApp() {
             return () => clearTimeout(id);
         }
     }, [message]);
-    // Helper to find next selectable index (skipping dependency refs)
-    const findNextSelectable = useCallback((from, direction) => {
-        let next = from + direction;
-        while (next >= 0 && next < data.length) {
-            if (!isDependencyRef(data[next])) {
-                return next;
-            }
-            next += direction;
-        }
-        return from; // Stay at current if no selectable found
-    }, [data]);
-    // Get all selectable indices
-    const selectableIndices = useMemo(() => data.map((row, i) => isDependencyRef(row) ? -1 : i).filter(i => i >= 0), [data]);
-    // Keep selection in bounds and on a selectable row
+    // Keep selection in bounds
     useEffect(() => {
-        if (selectableIndices.length === 0)
+        if (worktrees.length === 0)
             return;
-        if (!selectableIndices.includes(selected)) {
-            const firstSelectable = selectableIndices[0];
-            setSelected(firstSelectable);
+        if (selected >= worktrees.length) {
+            setSelected(worktrees.length - 1);
         }
-        else if (selected >= data.length) {
-            setSelected(selectableIndices[selectableIndices.length - 1]);
-        }
-    }, [data.length, selected, selectableIndices]);
-    const selectedRow = data[selected];
-    const selectedWorktree = selectedRow && !isDependencyRef(selectedRow) ? selectedRow : null;
+    }, [worktrees.length, selected]);
+    const selectedWorktree = worktrees[selected] ?? null;
     const showAssign = selectedWorktree?.prStatus === "assign";
     const showMerge = selectedWorktree?.prStatus === "approved";
     // Creation flow
@@ -69,7 +50,7 @@ export function WorktreeApp() {
     // Dependencies flow
     const dependencies = useDependencies({
         selectedWorktree,
-        allData: data,
+        worktrees,
         onMessage: setMessage,
         onComplete: refreshLocal,
     });
@@ -96,10 +77,10 @@ export function WorktreeApp() {
         }
         // Navigation
         if (key.upArrow || input === "k") {
-            setSelected((i) => findNextSelectable(i, -1));
+            setSelected((i) => Math.max(0, i - 1));
         }
         if (key.downArrow || input === "j") {
-            setSelected((i) => findNextSelectable(i, 1));
+            setSelected((i) => Math.min(worktrees.length - 1, i + 1));
         }
         // Actions
         if (key.return && selectedWorktree) {
@@ -149,10 +130,10 @@ export function WorktreeApp() {
         }
     });
     // Initial loading state
-    if (data.length === 0 && loading) {
+    if (worktrees.length === 0 && loading) {
         return (_jsxs(Box, { children: [_jsx(Text, { color: "cyan", children: _jsx(Spinner, { type: "dots" }) }), _jsx(Text, { children: " Loading worktrees..." })] }));
     }
-    if (data.length === 0 && !loading) {
+    if (worktrees.length === 0 && !loading) {
         return (_jsx(Box, { flexDirection: "column", children: _jsx(Text, { children: "No worktrees found" }) }));
     }
     // Render footer or modal input
@@ -168,5 +149,5 @@ export function WorktreeApp() {
         }
         return (_jsx(Footer, { refreshing: loading, message: message, focused: focused, showAssign: showAssign, showMerge: showMerge }));
     };
-    return (_jsxs(Box, { flexDirection: "column", children: [_jsx(WorktreeTable, { data: data, selected: selected, lastRemoteRefresh: lastRemoteRefresh }), renderFooterOrInput()] }));
+    return (_jsxs(Box, { flexDirection: "column", children: [_jsx(WorktreeTable, { worktrees: worktrees, selected: selected, lastRemoteRefresh: lastRemoteRefresh }), renderFooterOrInput()] }));
 }

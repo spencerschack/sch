@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { LocalWorktreeInfo, RemoteWorktreeInfo, WorktreeInfo, DisplayRow } from "../../worktree/types.js";
+import type { LocalWorktreeInfo, RemoteWorktreeInfo, WorktreeInfo } from "../../worktree/types.js";
 import { fetchAllLocalWorktreeInfo } from "../../data/local.js";
 import { fetchAllRemoteWorktreeInfo } from "../../data/remote.js";
 import { mergeWorktreeData, sortWorktrees } from "../../data/merge.js";
@@ -8,7 +8,7 @@ const LOCAL_REFRESH_INTERVAL = 5000; // 5 seconds
 const REMOTE_REFRESH_INTERVAL = 60000; // 1 minute
 
 export interface WorktreeDataResult {
-  data: DisplayRow[];
+  worktrees: WorktreeInfo[];
   loading: boolean;
   lastRemoteRefresh: Date | null;
   refresh: () => Promise<void>;
@@ -75,10 +75,10 @@ export function useWorktreeData(paused: boolean): WorktreeDataResult {
   }, [paused, refresh]);
 
   // Merge local and remote data
-  const data = useMemo(() => {
+  const worktrees = useMemo(() => {
     const merged = mergeWorktreeData(localData, remoteData);
     return sortWorktrees(merged);
   }, [localData, remoteData]);
 
-  return { data, loading, lastRemoteRefresh, refresh, refreshLocal };
+  return { worktrees, loading, lastRemoteRefresh, refresh, refreshLocal };
 }
