@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { WORKTREES_DIR } from "../worktree/paths.js";
 import { removeWorktreeConfig } from "../worktree/config.js";
 import { closeWindow } from "../window/operations.js";
+import { killTmuxSession, isTmuxSessionRunning } from "../window/tmux.js";
 import { execAsync, exists } from "../utils.js";
 
 export async function removeWorktree(worktreeName: string, force = false): Promise<void> {
@@ -27,7 +28,14 @@ export async function removeWorktree(worktreeName: string, force = false): Promi
 }
 
 export async function removeWorktreeFull(worktreeName: string, force = false): Promise<void> {
+  // Close Cursor window if open
   await closeWindow(worktreeName);
+  
+  // Kill tmux session if running
+  if (await isTmuxSessionRunning(worktreeName)) {
+    await killTmuxSession(worktreeName);
+  }
+  
   await removeWorktree(worktreeName, force);
   await removeWorktreeConfig(worktreeName);
 }

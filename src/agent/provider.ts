@@ -43,7 +43,7 @@ export async function launchAgent(worktreeName: string): Promise<void> {
       break;
     case "claude":
       await execAsync(
-        `tmux new-session -Ads "${worktreeName}" -c "${workingDir}" "claude"`
+        `tmux new-session -Ads "${worktreeName}" -c "${workingDir}" "claude --dangerously-skip-permissions"`
       );
       break;
     case "cursor-cli":
@@ -70,7 +70,7 @@ export async function openAgent(worktreeName: string): Promise<void> {
     case "claude":
     case "cursor-cli": {
       // Determine the agent command based on provider
-      const agentCmd = provider === "claude" ? "claude" : "cursor agent chat";
+      const agentCmd = provider === "claude" ? "claude --dangerously-skip-permissions" : "cursor agent chat";
       // Run tmux directly - takes over the current terminal
       spawnSync("tmux", ["new-session", "-As", worktreeName, "-c", workingDir, agentCmd], {
         stdio: "inherit",

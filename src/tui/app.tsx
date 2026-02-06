@@ -11,7 +11,8 @@ import { useFocused, useWorktreeData } from "./data/index.js";
 import { WorktreeTable } from "./table/index.js";
 
 // Actions
-import { handleOpen, handleDelete, handlePause, handleQa } from "./actions/index.js";
+import { handleOpen, handlePause, handleQa } from "./actions/index.js";
+import { useDeleteConfirm } from "./actions/use-delete-confirm.js";
 
 // PR
 import { handleOpenPr, handleAssign, handleMerge } from "./pr/index.js";
@@ -72,7 +73,6 @@ export function WorktreeApp() {
   const selectedRow = data[selected];
   const selectedWorktree = selectedRow && !isDependencyRef(selectedRow) ? selectedRow : null;
 
-  const showDelete = selectedWorktree?.prStatus === "merged";
   const showAssign = selectedWorktree?.prStatus === "assign";
   const showMerge = selectedWorktree?.prStatus === "approved";
 
@@ -90,6 +90,12 @@ export function WorktreeApp() {
     onComplete: refreshLocal,
   });
 
+  // Delete confirmation flow
+  const deleteConfirm = useDeleteConfirm({
+    onComplete: (result) => setMessage(result.message),
+    onRefresh: refreshLocal,
+  });
+
   // Main input handling - delegates to active modal first
   useInput((input, key) => {
     // Delegate to creation flow if active
@@ -97,6 +103,9 @@ export function WorktreeApp() {
 
     // Delegate to dependencies flow if active
     if (dependencies.handleInput(input, key)) return;
+
+    // Delegate to delete confirmation if active
+    if (deleteConfirm.handleInput(input, key)) return;
 
     // Handle escape for exiting (only when no modal is active)
     if (key.escape) {
@@ -122,11 +131,7 @@ export function WorktreeApp() {
       handleOpenPr(selectedWorktree).then((result) => setMessage(result.message));
     }
     if (key.delete && selectedWorktree) {
-      setMessage(`Removing ${selectedWorktree.name}...`);
-      handleDelete(selectedWorktree).then((result) => {
-        setMessage(result.message);
-        if (result.success) refreshLocal();
-      });
+      deleteConfirm.start(selectedWorktree);
     }
     if (input === "a" && selectedWorktree) {
       handleAssign(selectedWorktree).then((result) => setMessage(result.message));
@@ -189,12 +194,22 @@ export function WorktreeApp() {
       return <DependencyFlow dependencies={dependencies} />;
     }
 
+    if (deleteConfirm.active && deleteConfirm.worktree) {
+      return (
+        <Box>
+          <Text>
+            Delete <Text color="yellow">{deleteConfirm.worktree.name}</Text> without merged PR? (
+            <Text color="cyan">y</Text>/<Text color="cyan">n</Text>)
+          </Text>
+        </Box>
+      );
+    }
+
     return (
       <Footer
         refreshing={loading}
         message={message}
         focused={focused}
-        showDelete={showDelete}
         showAssign={showAssign}
         showMerge={showMerge}
       />
