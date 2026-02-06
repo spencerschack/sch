@@ -1,9 +1,8 @@
-import { isMain } from "../utils.js";
 import { listWindows, minimizeWindow, restoreWindow, focusWindow, closeWindow } from "../window/operations.js";
 import { findMissingWindows } from "../window/storage.js";
 
 function printUsage(): void {
-  console.log(`Usage: npm run window <command> [args]
+  console.log(`Usage: sch window <command> [args]
 
 Commands:
   list                    List all Cursor windows
@@ -15,14 +14,14 @@ Commands:
   close-missing           Close all windows with missing folders
 
 Examples:
-  npm run window list
-  npm run window minimize sage-service-location
-  npm run window focus store-move
-  npm run window close-missing`);
+  sch window list
+  sch window minimize sage-service-location
+  sch window focus store-move
+  sch window close-missing`);
 }
 
-async function main(): Promise<void> {
-  const [, , command, ...args] = process.argv;
+export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
+  const [command, ...restArgs] = args;
 
   switch (command) {
     case "list": {
@@ -39,7 +38,7 @@ async function main(): Promise<void> {
     }
 
     case "minimize": {
-      const pattern = args.join(" ");
+      const pattern = restArgs.join(" ");
       if (!pattern) {
         console.error("Error: pattern required");
         process.exit(1);
@@ -57,7 +56,7 @@ async function main(): Promise<void> {
     }
 
     case "restore": {
-      const pattern = args.join(" ");
+      const pattern = restArgs.join(" ");
       if (!pattern) {
         console.error("Error: pattern required");
         process.exit(1);
@@ -75,7 +74,7 @@ async function main(): Promise<void> {
     }
 
     case "focus": {
-      const pattern = args.join(" ");
+      const pattern = restArgs.join(" ");
       if (!pattern) {
         console.error("Error: pattern required");
         process.exit(1);
@@ -90,7 +89,7 @@ async function main(): Promise<void> {
     }
 
     case "close": {
-      const pattern = args.join(" ");
+      const pattern = restArgs.join(" ");
       if (!pattern) {
         console.error("Error: pattern required");
         process.exit(1);
@@ -151,11 +150,4 @@ async function main(): Promise<void> {
         process.exit(1);
       }
   }
-}
-
-if (isMain(import.meta.url)) {
-  main().catch((err) => {
-    console.error("Error:", err.message);
-    process.exit(1);
-  });
 }

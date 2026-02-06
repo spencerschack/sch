@@ -60,7 +60,7 @@ When I say I want to test or QA a worktree:
 
 1. Check out the branch in `~/carrot` as a detached checkout: `git -C ~/carrot checkout <branch-name> --detach`
 2. After I've tested, ask if it passed QA
-3. If it passed, record it with: `npm run worktree-config <worktree-name> qa`
+3. If it passed, record it with: `sch config <worktree-name> qa`
 
 ## Worktrees
 
@@ -114,22 +114,37 @@ git add -A && git commit -m "<message>" && git push
 
 # Commands
 
-## next
+## sch
 
-When the user says "next", run `npm run worktree-next` to open the most appropriate link for the first worktree needing attention.
+The `sch` command is a wrapper script that delegates to all other commands. It is available globally via PATH.
 
 ```
-npm run worktree-next
+sch <command> [args]
 ```
 
-# Scripts
+Commands:
 
-## worktree-new
+| Command | Description |
+| --- | --- |
+| `sch status` | Show worktree status table |
+| `sch tui` | Open interactive TUI |
+| `sch tui --watch` | Open TUI with auto-reload |
+| `sch new <base> <desc>` | Create a new worktree |
+| `sch config <name> <action>` | Manage worktree configuration |
+| `sch remove <name>` | Remove a worktree |
+| `sch next` | Open the next worktree needing attention |
+| `sch window <cmd>` | Manage Cursor windows |
+
+When the user says "next", run `sch next` to open the most appropriate link for the first worktree needing attention.
+
+# Command Details
+
+## sch new
 
 Creates a new worktree based on a special `@` worktree. Handles fetching latest master, rebasing the base worktree, creating the new worktree, running setup, and launching the agent.
 
 ```
-npm run worktree-new <base> <description> [--provider <cursor|claude|cursor-cli>]
+sch new <base> <description> [--provider <cursor|claude|cursor-cli>]
 ```
 
 Options:
@@ -141,27 +156,27 @@ Options:
 
 Examples:
 
-- `npm run worktree-new sage test-create-recipe-tool`
-- `npm run worktree-new sage my-feature --provider claude`
+- `sch new sage test-create-recipe-tool`
+- `sch new sage my-feature --provider claude`
 
-## worktree-status
+## sch status
 
 Shows the status of all worktrees and their agent sessions. Outputs a table with columns for worktree name, status, and last activity time. Output the results exactly without modifications—do not strip links or other formatting. If the status shows any merged PRs, ask if I want to remove those worktrees. If the status shows any expired PRs that are not paused, ask if I should pull latest master, merge master into the expired branches, and push.
 
 ```
-npm run worktree-status
+sch status
 ```
 
-## worktree-config
+## sch config
 
-Manages worktree configuration stored in `~/worktrees/.worktree-config`. Supports pausing/unpausing worktrees, tracking QA status, changing agent provider, and cleaning up config entries. Paused worktrees show a "P" indicator in status and are not considered when running `worktree-next`.
+Manages worktree configuration stored in `~/worktrees/.worktree-config`. Supports pausing/unpausing worktrees, tracking QA status, changing agent provider, and cleaning up config entries. Paused worktrees show a "P" indicator in status and are not considered when running `sch next`.
 
 ```
-npm run worktree-config <worktree-name> pause
-npm run worktree-config <worktree-name> unpause
-npm run worktree-config <worktree-name> remove
-npm run worktree-config <worktree-name> qa
-npm run worktree-config <worktree-name> provider <cursor|claude|cursor-cli>
+sch config <worktree-name> pause
+sch config <worktree-name> unpause
+sch config <worktree-name> remove
+sch config <worktree-name> qa
+sch config <worktree-name> provider <cursor|claude|cursor-cli>
 ```
 
 QA tracking:
@@ -169,7 +184,7 @@ QA tracking:
 - `qa` - Records the current commit from `~/carrot` (Bento directory) as QA'd
 - Worktrees without a QA commit are implicitly skipped
 
-The QA column in `worktree-status` shows: `-` (none/skipped), `done` (QA'd at current commit), or `stale` (new commits since QA).
+The QA column in `sch status` shows: `-` (none/skipped), `done` (QA'd at current commit), or `stale` (new commits since QA).
 
 Agent provider:
 
@@ -178,24 +193,24 @@ Agent provider:
   - `claude` - Claude Code (TMUX session)
   - `cursor-cli` - Cursor CLI (TMUX session)
 
-## worktree-remove
+## sch remove
 
 Removes a worktree completely: closes Cursor windows, removes the git worktree, and cleans up the config entry.
 
 ```
-npm run worktree-remove <worktree-name> [--force]
+sch remove <worktree-name> [--force]
 ```
 
 Use `--force` to remove worktrees with uncommitted changes.
 
-Example: `npm run worktree-remove sage-uv-install`
+Example: `sch remove sage-uv-install`
 
-## window
+## sch window
 
 Manages Cursor windows. Can list, minimize, restore, focus, and close windows by pattern matching. Also detects and closes windows pointing to deleted worktree folders.
 
 ```
-npm run window <command> [args]
+sch window <command> [args]
 ```
 
 Commands:
@@ -210,6 +225,6 @@ Commands:
 
 Examples:
 
-- `npm run window list`
-- `npm run window minimize sage-service-location`
-- `npm run window close-missing`
+- `sch window list`
+- `sch window minimize sage-service-location`
+- `sch window close-missing`

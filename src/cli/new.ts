@@ -1,6 +1,5 @@
 import { join } from "node:path";
 import { access, constants } from "node:fs/promises";
-import { isMain } from "../utils.js";
 import { createWorktree, runSetup, WORKTREE_CONFIGS } from "../lifecycle/create.js";
 import { launchAgent } from "../agent/provider.js";
 import type { AgentProvider } from "../worktree/config.js";
@@ -32,21 +31,20 @@ function parseArgs(args: string[]): { base: string; description: string; provide
   return { base, description: descParts.join("-"), provider };
 }
 
-async function main() {
-  const args = process.argv.slice(2);
+export async function main(args: string[] = process.argv.slice(2)) {
 
   let parsed: { base: string; description: string; provider: AgentProvider };
   try {
     parsed = parseArgs(args);
   } catch {
-    console.error("Usage: npm run worktree-new <base> <description> [--provider <cursor|claude|cursor-cli>]");
+    console.error("Usage: sch new <base> <description> [--provider <cursor|claude|cursor-cli>]");
     console.error(`  base: ${Object.keys(WORKTREE_CONFIGS).join(", ")}`);
     console.error("  description: kebab-case description for the branch");
     console.error("  --provider: agent provider (default: cursor)");
     console.error("");
     console.error("Examples:");
-    console.error("  npm run worktree-new sage test-create-recipe-tool");
-    console.error("  npm run worktree-new sage my-feature --provider claude");
+    console.error("  sch new sage test-create-recipe-tool");
+    console.error("  sch new sage my-feature --provider claude");
     process.exit(1);
   }
 
@@ -75,11 +73,4 @@ async function main() {
   console.log(`\nWorktree ready: ${result.worktreeName}`);
   console.log(`Branch: ${result.branchName}`);
   console.log(`Provider: ${providerLabel}`);
-}
-
-if (isMain(import.meta.url)) {
-  main().catch((err) => {
-    console.error(err.message);
-    process.exit(1);
-  });
 }

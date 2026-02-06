@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { exists, isMain } from "../utils.js";
+import { exists } from "../utils.js";
 import { WORKTREES_DIR } from "../worktree/paths.js";
 import { readWorktreeConfig, writeWorktreeConfig, removeWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { getBentoCommit } from "../git.js";
@@ -9,11 +9,11 @@ type Action = typeof VALID_ACTIONS[number];
 
 const VALID_PROVIDERS: AgentProvider[] = ["cursor", "claude", "cursor-cli"];
 
-async function main() {
-  const [worktreeName, action, argValue] = process.argv.slice(2);
+export async function main(args: string[] = process.argv.slice(2)) {
+  const [worktreeName, action, argValue] = args;
 
   if (!worktreeName || !action) {
-    console.error("Usage: npm run worktree-config <worktree-name> <action> [value]");
+    console.error("Usage: sch config <worktree-name> <action> [value]");
     console.error("");
     console.error("Actions:");
     console.error("  pause                     Pause the worktree");
@@ -62,7 +62,7 @@ async function main() {
       break;
     case "depends":
       if (!argValue) {
-        console.error("Usage: npm run worktree-config <worktree-name> depends <dependency-name>");
+        console.error("Usage: sch config <worktree-name> depends <dependency-name>");
         process.exit(1);
       }
       config.dependsOn = config.dependsOn ?? [];
@@ -82,7 +82,7 @@ async function main() {
       break;
     case "provider":
       if (!argValue) {
-        console.error(`Usage: npm run worktree-config <worktree-name> provider <${VALID_PROVIDERS.join("|")}>`);
+        console.error(`Usage: sch config <worktree-name> provider <${VALID_PROVIDERS.join("|")}>`);
         process.exit(1);
       }
       if (!VALID_PROVIDERS.includes(argValue as AgentProvider)) {
@@ -115,8 +115,4 @@ async function main() {
     default:
       console.log(`${worktreeName}: ${action}d`);
   }
-}
-
-if (isMain(import.meta.url)) {
-  main();
 }

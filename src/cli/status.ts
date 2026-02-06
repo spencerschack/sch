@@ -1,4 +1,3 @@
-import { isMain } from "../utils.js";
 import { fetchWorktrees } from "../data/merge.js";
 import { isDependencyRef } from "../worktree/types.js";
 import type { WorktreeInfo } from "../worktree/types.js";
@@ -7,9 +6,9 @@ import { openUrl } from "./utils.js";
 import { renderWorktreeTable } from "./render-table.js";
 import { openAgent } from "../agent/provider.js";
 
-async function main() {
-  const isNext = process.argv.includes("--next");
-  const isTui = process.argv.includes("--tui");
+export async function main(args: string[] = process.argv.slice(2)) {
+  const isNext = args.includes("--next");
+  const isTui = args.includes("--tui");
 
   if (isTui) {
     const { renderTui } = await import("../tui/index.js");
@@ -51,8 +50,4 @@ async function main() {
   }
 
   renderWorktreeTable(worktrees);
-}
-
-if (isMain(import.meta.url)) {
-  main();
 }

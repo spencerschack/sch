@@ -6,16 +6,6 @@
   "repository": "git@github.com:spencerschack/sch.git",
   "author": "Spencer Schack <spencer.schack@instacart.com>",
   "license": "MIT",
-  "scripts": {
-    "worktree-status": "tsx src/cli/status.ts",
-    "worktree-next": "tsx src/cli/next.ts",
-    "worktree-tui": "tsx src/cli/status.ts --tui",
-    "worktree-tui-watch": "tsx --watch src/cli/status.ts --tui",
-    "worktree-new": "tsx src/cli/new.ts",
-    "worktree-config": "tsx src/cli/config.ts",
-    "worktree-remove": "tsx src/cli/remove.ts",
-    "window": "tsx src/cli/window.ts"
-  },
   "dependencies": {
     "@aliou/pi-processes": "^0.3.3",
     "@mariozechner/pi-coding-agent": "^0.51.6",

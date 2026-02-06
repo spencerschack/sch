@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCH_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Special case: tui --watch needs tsx --watch
+if [[ "${1:-}" == "tui" && "${2:-}" == "--watch" ]]; then
+  cd "$SCH_DIR"
+  shift 2
+  exec npx tsx --watch "$SCH_DIR/src/cli/main.ts" tui "$@"
+fi
+
+cd "$SCH_DIR"
+exec npx tsx "$SCH_DIR/src/cli/main.ts" "$@"

@@ -1,18 +1,17 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { isMain, execAsync } from "../utils.js";
+import { execAsync } from "../utils.js";
 import { WORKTREES_DIR } from "../worktree/paths.js";
 import { removeWorktreeConfig } from "../worktree/config.js";
 import { closeWindow } from "../window/operations.js";
 import { removeWorktree } from "../lifecycle/remove.js";
 
-async function main() {
-  const args = process.argv.slice(2);
+export async function main(args: string[] = process.argv.slice(2)) {
   const force = args.includes("--force");
   const worktreeNames = args.filter((a) => !a.startsWith("--"));
 
   if (worktreeNames.length === 0) {
-    console.error("Usage: npm run worktree-remove <worktree-name> [--force]");
+    console.error("Usage: sch remove <worktree-name> [--force]");
     process.exit(1);
   }
 
@@ -45,11 +44,4 @@ async function main() {
   }
 
   console.log("\nDone.");
-}
-
-if (isMain(import.meta.url)) {
-  main().catch((err) => {
-    console.error("Error:", err.message);
-    process.exit(1);
-  });
 }
