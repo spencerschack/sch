@@ -7,14 +7,14 @@
   "author": "Spencer Schack <spencer.schack@instacart.com>",
   "license": "MIT",
   "scripts": {
-    "worktree-status": "tsx worktree-status.ts",
-    "worktree-next": "tsx worktree-status.ts --next",
-    "worktree-tui": "tsx worktree-status.ts --tui",
-    "worktree-tui-watch": "tsx --watch worktree-status.ts --tui",
-    "worktree-new": "tsx worktree-new.ts",
-    "worktree-config": "tsx worktree-config.ts",
-    "worktree-remove": "tsx worktree-remove.ts",
-    "window": "tsx window-management.ts"
+    "worktree-status": "tsx src/cli/status.ts",
+    "worktree-next": "tsx src/cli/next.ts",
+    "worktree-tui": "tsx src/cli/status.ts --tui",
+    "worktree-tui-watch": "tsx --watch src/cli/status.ts --tui",
+    "worktree-new": "tsx src/cli/new.ts",
+    "worktree-config": "tsx src/cli/config.ts",
+    "worktree-remove": "tsx src/cli/remove.ts",
+    "window": "tsx src/cli/window.ts"
   },
   "dependencies": {
     "@aliou/pi-processes": "^0.3.3",
