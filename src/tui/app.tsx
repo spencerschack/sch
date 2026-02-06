@@ -12,7 +12,9 @@ import { WorktreeTable } from "./table/index.js";
 
 // Actions
 import { handleOpen, handlePause, handleQa } from "./actions/index.js";
-import { useDeleteConfirm } from "./actions/use-delete-confirm.js";
+
+// Deletion
+import { useDeleteConfirm, DeletionFlow } from "./deletion/index.js";
 
 // PR
 import { handleOpenPr, handleAssign, handleMerge } from "./pr/index.js";
@@ -194,15 +196,8 @@ export function WorktreeApp() {
       return <DependencyFlow dependencies={dependencies} />;
     }
 
-    if (deleteConfirm.active && deleteConfirm.worktree) {
-      return (
-        <Box>
-          <Text>
-            Delete <Text color="yellow">{deleteConfirm.worktree.name}</Text> without merged PR? (
-            <Text color="cyan">y</Text>/<Text color="cyan">n</Text>)
-          </Text>
-        </Box>
-      );
+    if (deleteConfirm.active) {
+      return <DeletionFlow deletion={deleteConfirm} />;
     }
 
     return (

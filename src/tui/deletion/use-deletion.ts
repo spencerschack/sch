@@ -1,9 +1,12 @@
 import { useState, useCallback } from "react";
 import type { WorktreeInfo } from "../../worktree/types.js";
 import { removeWorktreeFull } from "../../lifecycle/remove.js";
-import type { ActionResult } from "./open.js";
+import type { ActionResult } from "../actions/open.js";
+
+export type DeleteState = "idle" | "confirming" | "deleting";
 
 export interface DeleteConfirmResult {
+  state: DeleteState;
   active: boolean;
   worktree: WorktreeInfo | null;
   start: (wt: WorktreeInfo) => void;
@@ -18,13 +21,16 @@ export interface UseDeleteConfirmOptions {
 }
 
 export function useDeleteConfirm(options: UseDeleteConfirmOptions = {}): DeleteConfirmResult {
+  const [state, setState] = useState<DeleteState>("idle");
   const [worktree, setWorktree] = useState<WorktreeInfo | null>(null);
 
-  const active = worktree !== null;
+  const active = state !== "idle";
 
   const start = useCallback((wt: WorktreeInfo) => {
     // If PR is merged, no confirmation needed - delete immediately
     if (wt.prStatus === "merged") {
+      setWorktree(wt);
+      setState("deleting");
       removeWorktreeFull(wt.name)
         .then(() => {
           options.onComplete?.({ success: true, message: `Removed: ${wt.name}` });
@@ -33,11 +39,16 @@ export function useDeleteConfirm(options: UseDeleteConfirmOptions = {}): DeleteC
         .catch((err) => {
           const msg = err instanceof Error ? err.message : String(err);
           options.onComplete?.({ success: false, message: `Failed to remove: ${msg}` });
+        })
+        .finally(() => {
+          setState("idle");
+          setWorktree(null);
         });
       return;
     }
     // Otherwise, ask for confirmation
     setWorktree(wt);
+    setState("confirming");
   }, [options]);
 
   const confirm = useCallback(async (): Promise<ActionResult> => {
@@ -45,9 +56,12 @@ export function useDeleteConfirm(options: UseDeleteConfirmOptions = {}): DeleteC
       return { success: false, message: "No worktree selected" };
     }
 
+    setState("deleting");
+
     try {
       await removeWorktreeFull(worktree.name);
       const result = { success: true, message: `Removed: ${worktree.name}` };
+      setState("idle");
       setWorktree(null);
       options.onComplete?.(result);
       options.onRefresh?.();
@@ -55,6 +69,7 @@ export function useDeleteConfirm(options: UseDeleteConfirmOptions = {}): DeleteC
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       const result = { success: false, message: `Failed to remove: ${msg}` };
+      setState("idle");
       setWorktree(null);
       options.onComplete?.(result);
       return result;
@@ -62,6 +77,7 @@ export function useDeleteConfirm(options: UseDeleteConfirmOptions = {}): DeleteC
   }, [worktree, options]);
 
   const cancel = useCallback(() => {
+    setState("idle");
     setWorktree(null);
   }, []);
 
@@ -81,6 +97,7 @@ export function useDeleteConfirm(options: UseDeleteConfirmOptions = {}): DeleteC
   }, [active, cancel, confirm]);
 
   return {
+    state,
     active,
     worktree,
     start,
