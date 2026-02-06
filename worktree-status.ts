@@ -4,12 +4,12 @@ import { homedir } from "node:os";
 import { WORKTREES_DIR, readWorktreeConfig, WorktreeConfig } from "./worktree-config.js";
 import { WORKTREE_CONFIGS } from "./worktree-new.js";
 import { execAsync, exists, isMain } from "./utils.js";
+import { getBentoCommit } from "./git.js";
 import type { AgentStatusResult, GitStatusResult, LocalWorktreeInfo, PrStatus, QaStatus, RemoteWorktreeInfo, WorktreeInfo, DisplayRow } from "./worktree-info.js";
 import { isDependencyRef } from "./worktree-info.js";
 import { needsAttention, renderWorktreeTable } from "./render-table.js";
 
 const CURSOR_PROJECTS_DIR = join(homedir(), ".cursor", "projects");
-const BENTO_DIR = join(homedir(), "carrot");
 const IDLE_THRESHOLD_SECONDS = 30;
 const IGNORED_CHECKS = ["semgrep-cloud-platform/scan"];
 
@@ -94,10 +94,6 @@ async function getCurrentCommit(worktreePath: string): Promise<string> {
   return stdout.trim();
 }
 
-async function getBentoCommit(): Promise<string> {
-  const { stdout } = await execAsync(`git -C "${BENTO_DIR}" rev-parse HEAD`);
-  return stdout.trim();
-}
 
 async function getQaStatus(worktreePath: string, config: WorktreeConfig, bentoCommit: string): Promise<QaStatus> {
   const currentCommit = await getCurrentCommit(worktreePath);
@@ -468,7 +464,7 @@ async function main() {
   const isTui = process.argv.includes("--tui");
 
   if (isTui) {
-    const { renderTui } = await import("./render-tui.js");
+    const { renderTui } = await import("./tui/index.js");
     await renderTui();
     return;
   }

@@ -1,10 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { execAsync, exists, isMain } from "./utils.js";
+import { exists, isMain } from "./utils.js";
+import { getBentoCommit } from "./git.js";
 
 export const WORKTREES_DIR = join(homedir(), "worktrees");
-const BENTO_DIR = join(homedir(), "carrot");
 export const CONFIG_PATH = join(WORKTREES_DIR, ".worktree-config");
 
 export interface WorktreeConfig {
@@ -44,11 +44,6 @@ export async function removeWorktreeConfig(worktreeName: string): Promise<boolea
   delete configs[worktreeName];
   await writeAllConfigs(configs);
   return true;
-}
-
-async function getBentoCommit(): Promise<string> {
-  const { stdout } = await execAsync(`git -C "${BENTO_DIR}" rev-parse HEAD`);
-  return stdout.trim();
 }
 
 const VALID_ACTIONS = ["pause", "unpause", "remove", "qa", "depends", "undepends"] as const;

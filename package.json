@@ -10,6 +10,7 @@
     "worktree-status": "tsx worktree-status.ts",
     "worktree-next": "tsx worktree-status.ts --next",
     "worktree-tui": "tsx worktree-status.ts --tui",
+    "worktree-tui-watch": "tsx --watch worktree-status.ts --tui",
     "worktree-new": "tsx worktree-new.ts",
     "worktree-config": "tsx worktree-config.ts",
     "worktree-remove": "tsx worktree-remove.ts",
