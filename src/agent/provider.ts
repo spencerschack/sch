@@ -4,6 +4,7 @@ import { WORKTREES_DIR } from "../worktree/paths.js";
 import { readWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { WORKTREE_CONFIGS } from "../lifecycle/create.js";
 import { execAsync } from "../utils.js";
+import { listWindows, focusWindow } from "../window/operations.js";
 
 /**
  * Gets the working directory for a worktree based on its config.
@@ -56,7 +57,7 @@ export async function launchAgent(worktreeName: string): Promise<void> {
 
 /**
  * Opens/attaches to an existing agent session.
- * For Cursor: opens via cursor:// URL
+ * For Cursor: focuses existing window or opens new one
  * For Claude/Cursor CLI: opens Terminal.app and attaches to TMUX session
  */
 export async function openAgent(worktreeName: string): Promise<void> {
@@ -64,9 +65,17 @@ export async function openAgent(worktreeName: string): Promise<void> {
   const workingDir = await getWorktreeWorkingDir(worktreeName);
 
   switch (provider) {
-    case "cursor":
-      await execAsync(`open "cursor://file/${workingDir}"`);
+    case "cursor": {
+      // Check if a window already exists for this worktree
+      const windows = await listWindows();
+      const existingWindow = windows.find((w) => w.name.includes(worktreeName));
+      if (existingWindow) {
+        await focusWindow(worktreeName);
+      } else {
+        await execAsync(`cursor -n "${workingDir}"`);
+      }
       break;
+    }
     case "claude":
     case "cursor-cli": {
       // Determine the agent command based on provider
