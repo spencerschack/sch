@@ -1,6 +1,6 @@
 import prettyMs from "pretty-ms";
 import { isDependencyRef } from "../worktree/types.js";
-import { needsAttention } from "../status/attention.js";
+import { needsAttention, getDependencyStatusSummary } from "../status/index.js";
 import { getWorktreeWorkingDir } from "../agent/provider.js";
 export function formatAgentStatus(agent) {
     if (agent.status === "none")
@@ -42,12 +42,20 @@ function formatDeployStatus(status) {
     }
 }
 export async function renderWorktreeTable(rows) {
+    // Build a map for dependency lookups
+    const worktreeMap = new Map();
+    for (const row of rows) {
+        if (!isDependencyRef(row)) {
+            worktreeMap.set(row.name, row);
+        }
+    }
     console.log("| | Worktree | Agent | Git | QA | PR | Deploy |");
     console.log("| --- | --- | --- | --- | --- | --- | --- |");
     for (const row of rows) {
         if (isDependencyRef(row)) {
-            // Dependency ref - just show the name with indent
-            console.log(`|  | └─ ${row.name} |  |  |  |  |  |`);
+            const depInfo = worktreeMap.get(row.name);
+            const { text: statusSummary } = getDependencyStatusSummary(depInfo);
+            console.log(`|  | └─ ${row.name} (${statusSummary}) |  |  |  |  |  |`);
             continue;
         }
         const wt = row;

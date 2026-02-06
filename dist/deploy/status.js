@@ -69,10 +69,10 @@ function mapDeployStatus(iscStatus) {
         case "pending":
             return "pending";
         case "in-progress":
-        case "removing":
             return "in-progress";
         case "succeeded":
         case "collected":
+        case "removing":
             return "succeeded";
         case "failed":
             return "failed";

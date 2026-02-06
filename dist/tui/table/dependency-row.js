@@ -1,12 +1,17 @@
 import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
 import { Box, Text } from "ink";
-export function DependencyRow({ name, widths }) {
+import { getStatusColor, getDeployColor } from "./colors.js";
+import { getDependencyStatusSummary } from "../../status/summary.js";
+function getColorForSummary(depInfo, type) {
+    if (!depInfo || type === "missing")
+        return undefined;
+    if (type === "deploy")
+        return getDeployColor(depInfo.deployStatus);
+    return getStatusColor(depInfo.prStatus);
+}
+export function DependencyRow({ name, depInfo }) {
     const gap = "  ";
-    const fullName = `└─ ${name}`;
-    const namePad = fullName.padEnd(widths.name);
-    const emptyAgent = "".padEnd(widths.agent);
-    const emptyGit = "".padEnd(widths.git);
-    const emptyQa = "".padEnd(widths.qa);
-    const emptyPr = "".padEnd(widths.pr);
-    return (_jsx(Box, { children: _jsxs(Text, { dimColor: true, children: [" ", gap, namePad, gap, emptyAgent, gap, emptyGit, gap, emptyQa, gap, emptyPr] }) }));
+    const { text: statusText, type } = getDependencyStatusSummary(depInfo);
+    const statusColor = getColorForSummary(depInfo, type);
+    return (_jsxs(Box, { children: [_jsxs(Text, { dimColor: true, children: [" ", gap, "└─ ", name, " ("] }), _jsx(Text, { color: statusColor, dimColor: !statusColor, children: statusText }), _jsx(Text, { dimColor: true, children: ")" })] }));
 }

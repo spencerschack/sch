@@ -1,6 +1,7 @@
 import { isDependencyRef } from "../../worktree/types.js";
 import { formatAgentStatus, formatGitStatus } from "../../cli/render-table.js";
 import { needsAttention } from "../../status/attention.js";
+import { getDependencyStatusSummary } from "../../status/summary.js";
 function formatDeployStatus(status) {
     switch (status) {
         case "loading":
@@ -38,10 +39,21 @@ export function computeColumnWidths(data) {
         pr: "PR".length,
         deploy: "Deploy".length,
     };
+    // Build a map for dependency lookups
+    const worktreeMap = new Map();
+    for (const item of data) {
+        if (!isDependencyRef(item)) {
+            worktreeMap.set(item.name, item);
+        }
+    }
     for (const item of data) {
         if (isDependencyRef(item)) {
-            // Dependency refs have "└─ " prefix (3 chars)
-            widths.name = Math.max(widths.name, 3 + item.name.length);
+            // Dependency refs have "└─ name (status)" format
+            const depInfo = worktreeMap.get(item.name);
+            const { text: statusText } = getDependencyStatusSummary(depInfo);
+            // "└─ " (3) + name + " (" (2) + status + ")" (1)
+            const fullLength = 3 + item.name.length + 2 + statusText.length + 1;
+            widths.name = Math.max(widths.name, fullLength);
             continue;
         }
         const row = getRowData(item);
