@@ -114,7 +114,9 @@ export function WorktreeApp() {
 
     // Actions
     if (key.return && selectedWorktree) {
-      handleOpen(selectedWorktree).then((result) => setMessage(result.message));
+      handleOpen(selectedWorktree)
+        .then((result) => setMessage(result.message))
+        .catch((err) => setMessage(`Error: ${err.message}`));
     }
     if (key.tab && selectedWorktree) {
       handleOpenPr(selectedWorktree).then((result) => setMessage(result.message));

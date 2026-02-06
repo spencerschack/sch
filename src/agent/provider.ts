@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { WORKTREES_DIR } from "../worktree/paths.js";
 import { readWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { WORKTREE_CONFIGS } from "../lifecycle/create.js";
@@ -42,12 +43,12 @@ export async function launchAgent(worktreeName: string): Promise<void> {
       break;
     case "claude":
       await execAsync(
-        `tmux new-session -d -s "${worktreeName}" -c "${workingDir}" "claude"`
+        `tmux new-session -Ads "${worktreeName}" -c "${workingDir}" "claude"`
       );
       break;
     case "cursor-cli":
       await execAsync(
-        `tmux new-session -d -s "${worktreeName}" -c "${workingDir}" "agent chat"`
+        `tmux new-session -Ads "${worktreeName}" -c "${workingDir}" "cursor agent chat"`
       );
       break;
   }
@@ -67,15 +68,14 @@ export async function openAgent(worktreeName: string): Promise<void> {
       await execAsync(`open "cursor://file/${workingDir}"`);
       break;
     case "claude":
-    case "cursor-cli":
-      // Open iTerm and attach to the TMUX session
-      const script = `
-        tell application "iTerm"
-          activate
-          create window with default profile command "tmux attach -t '${worktreeName}' 2>/dev/null || tmux new-session -s '${worktreeName}' -c '${workingDir}'"
-        end tell
-      `;
-      await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`);
+    case "cursor-cli": {
+      // Determine the agent command based on provider
+      const agentCmd = provider === "claude" ? "claude" : "cursor agent chat";
+      // Run tmux directly - it will take over the current terminal
+      spawnSync("tmux", ["new-session", "-As", worktreeName, "-c", workingDir, agentCmd], {
+        stdio: "inherit",
+      });
       break;
+    }
   }
 }
