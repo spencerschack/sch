@@ -5,7 +5,7 @@ export type HighlightColumn = "agent" | "git" | "qa" | "pr" | null;
 
 export function getHighlightColumn(wt: WorktreeInfo): HighlightColumn {
   // Priority 1: PR issues that block progress
-  if (wt.prStatus === "failed" || wt.prStatus === "expired" || wt.prStatus === "assign" || wt.prStatus === "frozen") {
+  if (wt.prStatus === "conflict" || wt.prStatus === "failed" || wt.prStatus === "expired" || wt.prStatus === "assign" || wt.prStatus === "frozen") {
     return "pr";
   }
   // Priority 2: Agent needs attention (idle when PR isn't busy)

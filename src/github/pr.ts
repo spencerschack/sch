@@ -19,6 +19,7 @@ export async function fetchPrData(branch: string): Promise<GraphQLPrData | null>
             state
             number
             reviewDecision
+            mergeable
             mergeQueueEntry { state }
             comments(last: 50) {
               nodes {
@@ -81,6 +82,7 @@ export function computePrStatus(pr: GraphQLPrData): PrStatusResult {
   }
 
   if (ciResult.status === "expired") return { status: "expired", url: prUrl };
+  if (pr.mergeable === "CONFLICTING") return { status: "conflict", url: prUrl };
   if (ciResult.status === "fail") return { status: "failed", url: prUrl };
   if (ciResult.status === "frozen") {
     const freezeUrl = ciResult.freezeUrl ?? prUrl;

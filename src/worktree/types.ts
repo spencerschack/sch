@@ -20,6 +20,7 @@ export type PrStatus =
   | "none"
   | "approved"
   | "assign"
+  | "conflict"
   | "failed"
   | "expired"
   | "frozen"

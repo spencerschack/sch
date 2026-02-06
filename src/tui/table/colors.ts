@@ -6,6 +6,7 @@ export function getStatusColor(status: PrStatus): string | undefined {
       return "green";
     case "merged":
       return "magenta";
+    case "conflict":
     case "failed":
     case "expired":
       return "red";

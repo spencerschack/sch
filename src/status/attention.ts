@@ -15,16 +15,17 @@ export function getPrPriority(status: PrStatus): number {
   switch (status) {
     case "approved": return 1;
     case "assign": return 2;
-    case "failed": return 3;
-    case "expired": return 4;
-    case "frozen": return 5;
-    case "none": return 6;
-    case "waiting": return 7;
-    case "running": return 8;
-    case "loading": return 8;
-    case "merged": return 9;
-    case "queued": return 9;
-    case "closed": return 10;
+    case "conflict": return 3;
+    case "failed": return 4;
+    case "expired": return 5;
+    case "frozen": return 6;
+    case "none": return 7;
+    case "waiting": return 8;
+    case "running": return 9;
+    case "loading": return 9;
+    case "merged": return 10;
+    case "queued": return 10;
+    case "closed": return 11;
   }
 }
 
