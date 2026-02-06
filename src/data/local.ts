@@ -25,7 +25,7 @@ export async function fetchLocalWorktreeInfo(entry: string, bentoCommit: string)
 
   return {
     name: entry,
-    agentProvider: config.agentProvider ?? "cursor",
+    agentProvider: config.agentProvider,
     agent,
     git,
     paused: config.paused ?? false,

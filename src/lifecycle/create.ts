@@ -74,10 +74,11 @@ export async function createWorktree(
   await run("git rebase origin/master", baseWorktree);
   await run(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree);
 
-  // Save the agent provider to the worktree config
-  if (provider !== "cursor") {
-    await writeWorktreeConfig(worktreeName, { agentProvider: provider });
-  }
+  // Save the worktree config with base and provider
+  await writeWorktreeConfig(worktreeName, {
+    base,
+    agentProvider: provider,
+  });
 
   return { worktreeName, branchName, workingDir };
 }

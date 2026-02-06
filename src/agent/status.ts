@@ -1,10 +1,10 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { CURSOR_PROJECTS_DIR, CLAUDE_PROJECTS_DIR, WORKTREES_DIR } from "../worktree/paths.js";
-import { readWorktreeConfig, type AgentProvider } from "../worktree/config.js";
+import { CURSOR_PROJECTS_DIR, CLAUDE_PROJECTS_DIR } from "../worktree/paths.js";
+import { readWorktreeConfig } from "../worktree/config.js";
 import { exists, execAsync } from "../utils.js";
 import type { AgentStatusResult } from "../worktree/types.js";
-import { WORKTREE_CONFIGS } from "../lifecycle/create.js";
+import { getWorktreeWorkingDir } from "./provider.js";
 
 const IDLE_THRESHOLD_SECONDS = 30;
 
@@ -24,19 +24,8 @@ export async function isTmuxSessionRunning(worktreeName: string): Promise<boolea
  * Get the encoded project path for Claude Code.
  * Claude encodes paths by replacing / with -
  */
-function getClaudeProjectPath(worktreeName: string): string {
-  const worktreePath = join(WORKTREES_DIR, worktreeName);
-  
-  // Find the working directory based on worktree name prefix
-  let workingDir = worktreePath;
-  for (const [base, config] of Object.entries(WORKTREE_CONFIGS)) {
-    if (worktreeName.startsWith(`${base}-`)) {
-      workingDir = join(worktreePath, config.workingDir);
-      break;
-    }
-  }
-  
-  // Claude encodes paths by replacing / with -
+async function getClaudeProjectPath(worktreeName: string): Promise<string> {
+  const workingDir = await getWorktreeWorkingDir(worktreeName);
   return workingDir.replace(/\//g, "-");
 }
 
@@ -93,7 +82,7 @@ async function getClaudeAgentStatus(worktreeName: string): Promise<AgentStatusRe
     return { status: "none", age: 999999 };
   }
 
-  const encodedPath = getClaudeProjectPath(worktreeName);
+  const encodedPath = await getClaudeProjectPath(worktreeName);
   const projects = await readdir(CLAUDE_PROJECTS_DIR);
   const match = projects.find((p) => p === encodedPath || p.includes(encodedPath));
   
@@ -145,7 +134,7 @@ async function getClaudeAgentStatus(worktreeName: string): Promise<AgentStatusRe
  */
 export async function getAgentStatus(worktreeName: string): Promise<AgentStatusResult> {
   const config = await readWorktreeConfig(worktreeName);
-  const provider: AgentProvider = config.agentProvider ?? "cursor";
+  const provider = config.agentProvider;
 
   switch (provider) {
     case "cursor":

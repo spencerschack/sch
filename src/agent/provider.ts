@@ -5,27 +5,26 @@ import { WORKTREE_CONFIGS } from "../lifecycle/create.js";
 import { execAsync } from "../utils.js";
 
 /**
- * Gets the working directory for a worktree based on its name.
- * Derives the path from WORKTREE_CONFIGS based on the worktree name prefix.
+ * Gets the working directory for a worktree based on its config.
  */
-export function getWorktreeWorkingDir(worktreeName: string): string {
+export async function getWorktreeWorkingDir(worktreeName: string): Promise<string> {
   const worktreePath = join(WORKTREES_DIR, worktreeName);
+  const config = await readWorktreeConfig(worktreeName);
+  const baseConfig = WORKTREE_CONFIGS[config.base];
   
-  for (const [base, config] of Object.entries(WORKTREE_CONFIGS)) {
-    if (worktreeName.startsWith(`${base}-`)) {
-      return join(worktreePath, config.workingDir);
-    }
+  if (baseConfig) {
+    return join(worktreePath, baseConfig.workingDir);
   }
   
   return worktreePath;
 }
 
 /**
- * Gets the agent provider for a worktree, defaulting to "cursor".
+ * Gets the agent provider for a worktree.
  */
 export async function getAgentProvider(worktreeName: string): Promise<AgentProvider> {
   const config = await readWorktreeConfig(worktreeName);
-  return config.agentProvider ?? "cursor";
+  return config.agentProvider;
 }
 
 /**
@@ -35,7 +34,7 @@ export async function getAgentProvider(worktreeName: string): Promise<AgentProvi
  */
 export async function launchAgent(worktreeName: string): Promise<void> {
   const provider = await getAgentProvider(worktreeName);
-  const workingDir = getWorktreeWorkingDir(worktreeName);
+  const workingDir = await getWorktreeWorkingDir(worktreeName);
 
   switch (provider) {
     case "cursor":
@@ -61,7 +60,7 @@ export async function launchAgent(worktreeName: string): Promise<void> {
  */
 export async function openAgent(worktreeName: string): Promise<void> {
   const provider = await getAgentProvider(worktreeName);
-  const workingDir = getWorktreeWorkingDir(worktreeName);
+  const workingDir = await getWorktreeWorkingDir(worktreeName);
 
   switch (provider) {
     case "cursor":

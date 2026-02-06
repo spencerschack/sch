@@ -49,5 +49,5 @@ export async function main(args: string[] = process.argv.slice(2)) {
     process.exit(0);
   }
 
-  renderWorktreeTable(worktrees);
+  await renderWorktreeTable(worktrees);
 }

@@ -15,18 +15,18 @@ export function formatGitStatus(git: GitStatusResult): string {
   return git.status === "clean" ? "clean" : `${git.count} changed`;
 }
 
-function getWorktreeUrl(wt: WorktreeInfo): string {
+async function getWorktreeUrl(wt: WorktreeInfo): Promise<string> {
   // For cursor provider, use cursor:// URL scheme
   // For TMUX-based providers, just use the working directory path
+  const workingDir = await getWorktreeWorkingDir(wt.name);
   if (wt.agentProvider === "cursor") {
-    const workingDir = getWorktreeWorkingDir(wt.name);
     return `cursor://file/${workingDir}`;
   }
   // For CLI providers, link to the working directory
-  return getWorktreeWorkingDir(wt.name);
+  return workingDir;
 }
 
-export function renderWorktreeTable(rows: DisplayRow[]): void {
+export async function renderWorktreeTable(rows: DisplayRow[]): Promise<void> {
   console.log("| | Worktree | Agent | Git | QA | PR |");
   console.log("| --- | --- | --- | --- | --- | --- |");
 
@@ -38,7 +38,7 @@ export function renderWorktreeTable(rows: DisplayRow[]): void {
     }
     const wt = row;
     const attention = needsAttention(wt) ? "!" : "";
-    const url = getWorktreeUrl(wt);
+    const url = await getWorktreeUrl(wt);
     const nameLink = `[${wt.name}](${url})`;
     const agentDisplay = formatAgentStatus(wt.agent);
     const prLabel = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;

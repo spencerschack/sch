@@ -5,10 +5,11 @@ import { exists } from "../utils.js";
 export type AgentProvider = "cursor" | "claude" | "cursor-cli";
 
 export interface WorktreeConfig {
+  base: string;
+  agentProvider: AgentProvider;
   paused?: boolean;
   qaCommit?: string;
   dependsOn?: string[];
-  agentProvider?: AgentProvider;
 }
 
 export interface AllWorktreeConfigs {
@@ -27,7 +28,11 @@ export async function writeAllConfigs(configs: AllWorktreeConfigs): Promise<void
 
 export async function readWorktreeConfig(worktreeName: string): Promise<WorktreeConfig> {
   const configs = await readAllConfigs();
-  return configs[worktreeName] ?? {};
+  const config = configs[worktreeName];
+  if (!config) {
+    throw new Error(`No config found for worktree: ${worktreeName}`);
+  }
+  return config;
 }
 
 export async function writeWorktreeConfig(worktreeName: string, config: WorktreeConfig): Promise<void> {
