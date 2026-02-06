@@ -53,10 +53,9 @@ export function CreationFlow({ creation }: CreationFlowProps) {
   }
 
   if (creation.state === "selectingProvider") {
-    const desc = creation.description.trim().replace(/\s+/g, "-").toLowerCase();
     return (
       <Box>
-        <Text>Provider for {creation.base}-{desc}: </Text>
+        <Text>Provider for {creation.base}-{creation.description}: </Text>
         <SelectInput
           items={providerOptions}
           onSelect={(item) => creation.selectProvider(item.value as AgentProvider)}

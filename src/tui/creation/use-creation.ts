@@ -2,6 +2,16 @@ import { useState, useCallback } from "react";
 import { createWorktree, WORKTREE_CONFIGS } from "../../lifecycle/create.js";
 import type { AgentProvider } from "../../worktree/config.js";
 
+/**
+ * Normalize description: lowercase, replace spaces with dashes, remove punctuation
+ */
+function normalizeDescription(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
 export type CreationState = "idle" | "selectingBase" | "enteringDescription" | "selectingProvider" | "creating";
 
 export interface CreationResult {
@@ -49,8 +59,7 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
   }, []);
 
   const submitDescription = useCallback(() => {
-    const desc = description.trim().replace(/\s+/g, "-").toLowerCase();
-    if (!desc) {
+    if (!description) {
       const msg = "Description cannot be empty";
       setMessage(msg);
       options.onMessage?.(msg);
@@ -66,10 +75,8 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     setProvider(selectedProvider);
     setState("creating");
 
-    const desc = description.trim().replace(/\s+/g, "-").toLowerCase();
-
     try {
-      const result = await createWorktree(base, desc, selectedProvider);
+      const result = await createWorktree(base, description, selectedProvider);
       const msg = `Created: ${result.worktreeName}`;
       setMessage(msg);
       options.onMessage?.(msg);
@@ -102,6 +109,10 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     return true;
   }, [active, cancel]);
 
+  const setDescriptionNormalized = useCallback((desc: string) => {
+    setDescription(normalizeDescription(desc));
+  }, []);
+
   return {
     state,
     active,
@@ -110,7 +121,7 @@ export function useCreation(options: UseCreationOptions = {}): CreationResult {
     provider,
     message,
     start,
-    setDescription,
+    setDescription: setDescriptionNormalized,
     selectBase,
     submitDescription,
     selectProvider,
