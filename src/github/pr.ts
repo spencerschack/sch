@@ -20,7 +20,7 @@ export async function fetchPrData(branch: string): Promise<GraphQLPrData | null>
           nodes {
             state
             number
-            headRefOid
+            mergeCommit { oid }
             reviewDecision
             mergeable
             mergeQueueEntry { state }
@@ -71,10 +71,11 @@ export async function fetchPrData(branch: string): Promise<GraphQLPrData | null>
 export function computePrStatus(pr: GraphQLPrData): PrStatusResult {
   const prUrl = `https://github.com/instacart/carrot/pull/${pr.number}`;
   const assignUrl = `https://pr.instacart.tools/pull-requests/mine?assignRepo=carrot&assignPr=${pr.number}`;
-  const commitSha = pr.headRefOid;
+  // Only include commit SHA for merged PRs (the merge commit, used for deploy tracking)
+  const commitSha = pr.state === "MERGED" ? pr.mergeCommit?.oid ?? null : null;
 
   if (pr.state === "MERGED") return { status: "merged", url: prUrl, assignUrl: null, commitSha };
-  if (pr.state === "CLOSED") return { status: "closed", url: prUrl, assignUrl: null, commitSha };
+  if (pr.state === "CLOSED") return { status: "closed", url: prUrl, assignUrl: null, commitSha: null };
   if (pr.state !== "OPEN") return { status: "none", url: null, assignUrl: null, commitSha: null };
 
   const checks = pr.statusCheckRollup?.contexts?.nodes ?? [];

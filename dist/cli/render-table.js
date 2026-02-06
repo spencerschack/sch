@@ -49,7 +49,7 @@ export async function renderWorktreeTable(worktrees) {
     console.log("| | Worktree | Agent | Git | QA | PR | Deploy |");
     console.log("| --- | --- | --- | --- | --- | --- | --- |");
     for (const wt of worktrees) {
-        const attention = needsAttention(wt) ? "!" : "";
+        const attention = needsAttention(wt) ? "!" : "-";
         const url = await getWorktreeUrl(wt);
         const nameLink = `[${wt.name}](${url})`;
         const agentDisplay = formatAgentStatus(wt.agent);

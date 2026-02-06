@@ -19,7 +19,7 @@ export interface PrComment {
 export interface GraphQLPrData {
   state: string;
   number: number;
-  headRefOid: string;
+  mergeCommit: { oid: string } | null;
   reviewDecision: string | null;
   mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
   mergeQueueEntry: { state: string } | null;

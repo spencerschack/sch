@@ -43,7 +43,7 @@ function formatDeployStatus(status: WorktreeInfo["deployStatus"]): string {
 
 export function getRowData(wt: WorktreeInfo): RowData {
   const wtNeedsAttention = needsAttention(wt);
-  const attention = wtNeedsAttention ? "!" : " ";
+  const attention = wtNeedsAttention ? "!" : "-";
   const agent = formatAgentStatus(wt.agent);
   const git = formatGitStatus(wt.git);
   const pr = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;

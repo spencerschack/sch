@@ -20,7 +20,7 @@ function formatDeployStatus(status) {
 }
 export function getRowData(wt) {
     const wtNeedsAttention = needsAttention(wt);
-    const attention = wtNeedsAttention ? "!" : " ";
+    const attention = wtNeedsAttention ? "!" : "-";
     const agent = formatAgentStatus(wt.agent);
     const git = formatGitStatus(wt.git);
     const pr = wt.prStatus === "none" ? "-" : wt.prStatus === "loading" ? "..." : wt.prStatus;

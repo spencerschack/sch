@@ -55,7 +55,7 @@ export async function renderWorktreeTable(worktrees: WorktreeInfo[]): Promise<vo
   console.log("| --- | --- | --- | --- | --- | --- | --- |");
 
   for (const wt of worktrees) {
-    const attention = needsAttention(wt) ? "!" : "";
+    const attention = needsAttention(wt) ? "!" : "-";
     const url = await getWorktreeUrl(wt);
     const nameLink = `[${wt.name}](${url})`;
     const agentDisplay = formatAgentStatus(wt.agent);
