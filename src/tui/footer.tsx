@@ -12,7 +12,7 @@ export function Footer({ message, focused, showAssign, showMerge }: FooterProps)
   return (
     <Box flexDirection="column">
       <Text dimColor>
-        <Text color="cyan">↵</Text>{" Cursor   "}
+        <Text color="cyan">↵</Text>{" Open   "}
         <Text color="cyan">⇥</Text>{" PR   "}
         <Text color="cyan">⌫</Text>{" Delete   "}
         {showAssign && <><Text color="cyan">A</Text>{"ssign   "}</>}
