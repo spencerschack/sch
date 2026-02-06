@@ -58,7 +58,7 @@ After work is done, sometimes I will want to QA the work by checking it out in t
 
 When I say I want to test or QA a worktree:
 
-1. Check out the branch in `~/carrot` as a detached checkout: `git -C ~/carrot checkout <branch-name> --detach`
+1. Run `sch test <worktree-name>` to check out the worktree in bento
 2. After I've tested, ask if it passed QA
 3. If it passed, record it with: `sch config <worktree-name> qa`
 
@@ -133,6 +133,7 @@ Commands:
 | `sch config <name> <action>` | Manage worktree configuration |
 | `sch remove <name>` | Remove a worktree |
 | `sch next` | Open the next worktree needing attention |
+| `sch test <name>` | Checkout worktree in bento for QA testing |
 | `sch window <cmd>` | Manage Cursor windows |
 
 When the user says "next", run `sch next` to open the most appropriate link for the first worktree needing attention.
@@ -204,6 +205,16 @@ sch remove <worktree-name> [--force]
 Use `--force` to remove worktrees with uncommitted changes.
 
 Example: `sch remove sage-uv-install`
+
+## sch test
+
+Checks out a worktree's commit in `~/carrot` (bento) as a detached HEAD for QA testing. After testing, use `sch config <name> qa` to record success.
+
+```
+sch test <worktree-name>
+```
+
+Example: `sch test sage-add-recipe-endpoint`
 
 ## sch window
 

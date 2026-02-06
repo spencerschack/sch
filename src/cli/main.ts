@@ -57,6 +57,13 @@ const COMMANDS = {
       await main(args);
     },
   },
+  test: {
+    description: "Checkout worktree in bento for QA testing",
+    run: async (args: string[]) => {
+      const { main } = await import("./test.js");
+      await main(args);
+    },
+  },
 } as const;
 
 type CommandName = keyof typeof COMMANDS;
