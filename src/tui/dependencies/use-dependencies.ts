@@ -73,16 +73,16 @@ export function useDependencies(options: UseDependenciesOptions): DependenciesRe
       return { label: `${isSelected ? "✓ " : "  "}${wt.name}`, value: wt.name };
     }), [allData, selectedWorktree?.name, currentDeps]);
 
-  // Handle input - returns true if handled
+  // Handle input - returns true if handled (consumes all input when active)
   const handleInput = useCallback((input: string, key: { escape?: boolean }): boolean => {
     if (!active) return false;
 
     if (key.escape) {
       cancel();
-      return true;
     }
 
-    return false;
+    // Always consume input when modal is active to prevent leaking to main handler
+    return true;
   }, [active, cancel]);
 
   return {
