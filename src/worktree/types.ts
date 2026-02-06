@@ -44,6 +44,7 @@ export interface LocalWorktreeInfo {
 export interface RemoteWorktreeInfo {
   prStatus: PrStatus;
   prUrl: string | null;
+  assignUrl: string | null;
 }
 
 export interface WorktreeInfo extends LocalWorktreeInfo, RemoteWorktreeInfo {}

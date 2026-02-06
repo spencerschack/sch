@@ -15,7 +15,7 @@ export function mergeWorktreeData(
   const localByName = new Map(local.map((l) => [l.name, l]));
 
   return local.map((l) => {
-    const r = remote.get(l.name) ?? { prStatus: "loading" as const, prUrl: null };
+    const r = remote.get(l.name) ?? { prStatus: "loading" as const, prUrl: null, assignUrl: null };
 
     // Compute blocked status based on dependencies
     // Blocked if ANY dependency exists and its PR is not merged

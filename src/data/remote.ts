@@ -9,6 +9,7 @@ export async function fetchRemoteWorktreeInfo(entry: string): Promise<RemoteWork
   return {
     prStatus: prResult.status,
     prUrl: prResult.url,
+    assignUrl: prResult.assignUrl,
   };
 }
 
