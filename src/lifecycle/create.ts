@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
-import { access, constants } from "node:fs/promises";
 import { WORKTREES_DIR } from "../worktree/paths.js";
 import { writeWorktreeConfig, type AgentProvider } from "../worktree/config.js";
 import { execAsync } from "../utils.js";
@@ -8,13 +7,30 @@ import { execAsync } from "../utils.js";
 export interface WorktreeConfigDef {
   workingDir: string;
   services?: string[];
+  setup?: string[];
 }
 
 export const WORKTREE_CONFIGS: Record<string, WorktreeConfigDef> = {
-  "sage-backend": { workingDir: "sage/sage-backend", services: ["api.sage-backend.customers"] },
-  "sage-fullstack": { workingDir: ".", services: ["api.sage-backend.customers", "web.instacart.customers"] },
-  store: { workingDir: "customers/store", services: ["web.instacart.customers"] },
-  migrations: { workingDir: "tools/migrations", services: ["migrations.tools"] },
+  "sage-backend": {
+    workingDir: "sage/sage-backend",
+    services: ["api.sage-backend.customers"],
+    setup: ["script/setup"],
+  },
+  "sage-fullstack": {
+    workingDir: ".",
+    services: ["api.sage-backend.customers", "web.instacart.customers"],
+    setup: ["cd sage/sage-backend && script/setup", "cd customers/store && script/setup"],
+  },
+  store: {
+    workingDir: "customers/store",
+    services: ["web.instacart.customers"],
+    setup: ["script/setup"],
+  },
+  migrations: {
+    workingDir: "tools/migrations",
+    services: ["migrations.tools"],
+    setup: ["bundle install"],
+  },
   github: { workingDir: ".github" },
 };
 
@@ -29,10 +45,6 @@ function runCommand(command: string, cwd: string, silent = false): Promise<strin
       else reject(new Error(`${command} exited with code ${code}`));
     });
   });
-}
-
-export function runSetup(cwd: string, silent = false): Promise<void> {
-  return runCommand("script/setup", cwd, silent).then(() => {});
 }
 
 export interface CreateWorktreeResult {
@@ -88,13 +100,11 @@ export async function createWorktree(
   await runCommand("git rebase --quiet origin/master", baseWorktree, true);
   await runCommand(`git worktree add -b "${branchName}" "${worktreePath}"`, baseWorktree, true);
 
-  // Run script/setup if it exists
-  const setupPath = join(workingDir, "script", "setup");
-  try {
-    await access(setupPath, constants.X_OK);
-    await runSetup(workingDir, silent);
-  } catch {
-    // script/setup doesn't exist or isn't executable, skip
+  // Run setup commands if defined
+  if (config.setup) {
+    for (const cmd of config.setup) {
+      await runCommand(cmd, workingDir, silent);
+    }
   }
 
   return { worktreeName, branchName, workingDir };
