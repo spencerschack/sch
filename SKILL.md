@@ -30,12 +30,13 @@ Base worktrees (prefixed with `@`) have pre-configured sparse checkouts:
 
 | Base | Working Directory | Use For |
 |------|-------------------|---------|
-| `@sage` | `sage/sage-backend` | Backend features |
+| `@sage-backend` | `sage/sage-backend` | Backend-only features |
+| `@sage-fullstack` | `.` (root) | Full stack (backend + frontend) |
 | `@store` | `customers/store` | Frontend features |
 | `@migrations` | `tools/migrations` | Database migrations |
 | `@github` | `.github` | GitHub Actions/config |
 
-Example: `sch new sage add-recipe-endpoint`
+Example: `sch new sage-backend add-recipe-endpoint`
 
 ## Checking Status
 

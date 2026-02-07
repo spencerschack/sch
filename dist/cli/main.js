@@ -56,6 +56,13 @@ const COMMANDS = {
             await main(args);
         },
     },
+    test: {
+        description: "Checkout worktree in bento for QA testing",
+        run: async (args) => {
+            const { main } = await import("./test.js");
+            await main(args);
+        },
+    },
 };
 function usage() {
     console.log("Usage: sch <command> [args]\n");

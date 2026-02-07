@@ -5,9 +5,10 @@ import { WORKTREES_DIR } from "../worktree/paths.js";
 import { writeWorktreeConfig } from "../worktree/config.js";
 import { execAsync } from "../utils.js";
 export const WORKTREE_CONFIGS = {
-    sage: { workingDir: "sage/sage-backend", service: "api.sage-backend.customers" },
-    store: { workingDir: "customers/store", service: "web.instacart.customers" },
-    migrations: { workingDir: "tools/migrations", service: "migrations.tools" },
+    "sage-backend": { workingDir: "sage/sage-backend", services: ["api.sage-backend.customers"] },
+    "sage-fullstack": { workingDir: ".", services: ["api.sage-backend.customers", "web.instacart.customers"] },
+    store: { workingDir: "customers/store", services: ["web.instacart.customers"] },
+    migrations: { workingDir: "tools/migrations", services: ["migrations.tools"] },
     github: { workingDir: ".github" },
 };
 function runCommand(command, cwd, silent = false) {

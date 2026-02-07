@@ -6,6 +6,19 @@ import { getPrStatus } from "../github/pr.js";
 import { fetchDeployStatus } from "../deploy/status.js";
 import { WORKTREE_CONFIGS } from "../lifecycle/create.js";
 
+/**
+ * Combine multiple deploy statuses into a single status.
+ * Priority: failed > pending > in-progress > succeeded > none
+ */
+function combineDeployStatuses(statuses: DeployStatus[]): DeployStatus {
+  if (statuses.length === 0) return "none";
+  if (statuses.includes("failed")) return "failed";
+  if (statuses.includes("pending")) return "pending";
+  if (statuses.includes("in-progress")) return "in-progress";
+  if (statuses.every(s => s === "succeeded")) return "succeeded";
+  return "none";
+}
+
 export async function fetchRemoteWorktreeInfo(entry: string): Promise<RemoteWorktreeInfo> {
   const worktreePath = join(WORKTREES_DIR, entry);
   const prResult = await getPrStatus(worktreePath);
@@ -18,8 +31,11 @@ export async function fetchRemoteWorktreeInfo(entry: string): Promise<RemoteWork
       const config = await readWorktreeConfig(entry);
       const baseConfig = WORKTREE_CONFIGS[config.base];
       
-      if (baseConfig?.service) {
-        deployStatus = await fetchDeployStatus(baseConfig.service, prResult.commitSha);
+      if (baseConfig?.services && baseConfig.services.length > 0) {
+        const statuses = await Promise.all(
+          baseConfig.services.map(service => fetchDeployStatus(service, prResult.commitSha!))
+        );
+        deployStatus = combineDeployStatuses(statuses);
       }
     } catch {
       // Config not found or other error, leave as "none"

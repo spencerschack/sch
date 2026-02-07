@@ -74,13 +74,17 @@ When running `git worktree add`, you must do it from the special `@` worktree, o
 
 After you have created the new worktree, you should run `script/setup` in the working directory and then open a new Cursor window at the worktree's preferred working directory with `cursor <path>`.
 
-### @sage
+### @sage-backend
 
-The preferred working directory is `sage/sage-backend`. Features that involve the backend should be based off this worktree.
+The preferred working directory is `sage/sage-backend`. Features that involve only the backend should be based off this worktree.
 
 Ongoing work:
 
 - [SAGE-438]: Writing more unit tests for the backend.
+
+### @sage-fullstack
+
+The preferred working directory is the root. Features that involve both the Sage backend and the store frontend should be based off this worktree. This worktree has a merged sparse checkout config from `@sage-backend` and `@store`.
 
 ### @store
 
@@ -157,8 +161,8 @@ Options:
 
 Examples:
 
-- `sch new sage test-create-recipe-tool`
-- `sch new sage my-feature --provider claude`
+- `sch new sage-backend test-create-recipe-tool`
+- `sch new sage-backend my-feature --provider claude`
 
 ## sch status
 
